@@ -32,7 +32,7 @@ class AuthService {
           'emailOrUsername': emailOrUsername,
           'password': password,
         }),
-      );
+      ).timeout(const Duration(seconds: 10));
 
       final data = jsonDecode(response.body);
       if (response.statusCode == 200 && data['success'] == true) {
@@ -49,9 +49,15 @@ class AuthService {
         'error': data['error'] ?? 'Login failed.',
       };
     } catch (e) {
+      String errMsg = e.toString();
+      if (errMsg.contains('TimeoutException')) {
+        errMsg = 'Connection timed out. The server is not responding.';
+      } else if (errMsg.contains('SocketException') || errMsg.contains('HandshakeException')) {
+        errMsg = 'Cannot reach server. Please check your internet connection.';
+      }
       return {
         'success': false,
-        'error': e.toString(),
+        'error': errMsg,
       };
     }
   }
@@ -66,7 +72,7 @@ class AuthService {
           'username': username,
           'password': password,
         }),
-      );
+      ).timeout(const Duration(seconds: 10));
 
       final data = jsonDecode(response.body);
       if (response.statusCode == 201 && data['success'] == true) {
@@ -83,9 +89,15 @@ class AuthService {
         'error': data['error'] ?? 'Registration failed.',
       };
     } catch (e) {
+      String errMsg = e.toString();
+      if (errMsg.contains('TimeoutException')) {
+        errMsg = 'Connection timed out. The server is not responding.';
+      } else if (errMsg.contains('SocketException') || errMsg.contains('HandshakeException')) {
+        errMsg = 'Cannot reach server. Please check your internet connection.';
+      }
       return {
         'success': false,
-        'error': e.toString(),
+        'error': errMsg,
       };
     }
   }
@@ -101,7 +113,7 @@ class AuthService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-      );
+      ).timeout(const Duration(seconds: 10));
 
       final data = jsonDecode(response.body);
       if (response.statusCode == 200 && data['success'] == true) {

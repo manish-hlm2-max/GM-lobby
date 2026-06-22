@@ -1,7 +1,7 @@
 class ApiConfig {
-  static const String host = '10.0.2.2:3000'; // Target local server from Android emulator
-  static const String baseUrl = 'http://$host';
-  static const String wsUrl = 'ws://$host';
+  static const String host = 'chess-game-1-epcc.onrender.com'; // Target live Render server
+  static const String baseUrl = 'https://$host';
+  static const String wsUrl = 'wss://$host';
 
   // Auth endpoints
   static const String register = '$baseUrl/api/auth/register';
