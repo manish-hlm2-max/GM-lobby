@@ -76,9 +76,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         if (isPieceWhite == isWhitePlayer) {
           setState(() {
             _selectedSquare = square;
-            // Get legal destination squares for the selected piece
             final moves = chess.generate_moves({'square': square});
-            _legalMoves = moves.map<String>((m) => (m as ChessDart.Move).toAlgebraic).toList();
+            _legalMoves = moves.map<String>((m) => m.toAlgebraic).toList();
           });
         }
       }
@@ -110,7 +109,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
             setState(() {
               _selectedSquare = square;
               final moves = chess.generate_moves({'square': square});
-              _legalMoves = moves.map<String>((m) => (m as ChessDart.Move).toAlgebraic).toList();
+              _legalMoves = moves.map<String>((m) => m.toAlgebraic).toList();
             });
             return;
           }
@@ -270,21 +269,26 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                   final file = String.fromCharCode('a'.codeUnitAt(0) + fileIndex);
                   final square = '$file$rankIndex';
 
+                  // Chess.com board palette colors
                   final isLightSquare = (fileIndex + (displayIndex ~/ 8)) % 2 == 0;
-                  final squareColor = isLightSquare ? const Color(0xFFF1F5F9) : const Color(0xFF334155);
+                  final squareColor = isLightSquare ? const Color(0xFFEEEED2) : const Color(0xFF769656);
 
                   final piece = chess.get(square);
                   final isSelected = _selectedSquare == square;
                   final isLegalDest = _legalMoves.contains(square);
 
+                  // Highlight colors from chess.com
+                  Color tileColor = squareColor;
+                  if (isSelected) {
+                    tileColor = const Color(0xFFF7F785);
+                  } else if (isLegalDest && piece != null) {
+                    tileColor = const Color(0xFFF7F785).withOpacity(0.5); // Capture highlight
+                  }
+
                   return GestureDetector(
                     onTap: () => _onSquareTap(square, chess, isWhitePlayer),
                     child: Container(
-                      color: isSelected 
-                          ? Colors.teal.withOpacity(0.6) 
-                          : isLegalDest 
-                              ? Colors.teal.withOpacity(0.3) 
-                              : squareColor,
+                      color: tileColor,
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
@@ -300,12 +304,15 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                                 ],
                               ),
                             ),
-                          // Highlight dots for legal moves
+                          // Highlight dots for legal empty moves
                           if (isLegalDest && piece == null)
                             Container(
-                              width: 12,
-                              height: 12,
-                              decoration: const BoxDecoration(color: Colors.teal, shape: BoxShape.circle),
+                              width: 14,
+                              height: 14,
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.15),
+                                shape: BoxShape.circle,
+                              ),
                             ),
                         ],
                       ),

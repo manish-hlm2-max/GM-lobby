@@ -4,6 +4,7 @@ import { Wallet } from '../models/Wallet';
 import { Transaction } from '../models/Transaction';
 import { User } from '../models/User';
 import { authMiddleware, adminMiddleware, AuthRequest } from '../middleware/authMiddleware';
+import { isTransactionSupported } from '../config/db';
 
 const router = Router();
 
@@ -19,8 +20,10 @@ router.post('/deposit', authMiddleware, async (req: AuthRequest, res: Response):
     const userId = req.user?.id;
 
     // Start database transaction session
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    const session = isTransactionSupported ? await mongoose.startSession() : null;
+    if (session) {
+      session.startTransaction();
+    }
 
     try {
       const isManual = !!referenceId;
@@ -36,7 +39,7 @@ router.post('/deposit', authMiddleware, async (req: AuthRequest, res: Response):
           ? `Manual Deposit request via UPI. UTR: ${referenceId}` 
           : 'Deposited cash via mock gateway.',
       });
-      await transaction.save({ session });
+      await transaction.save(session ? { session } : {});
 
       let currentBalance = 0;
 
@@ -45,17 +48,19 @@ router.post('/deposit', authMiddleware, async (req: AuthRequest, res: Response):
         const wallet = await Wallet.findOneAndUpdate(
           { userId },
           { $inc: { balance: amount } },
-          { new: true, upsert: true, session }
+          { new: true, upsert: true, ...(session ? { session } : {}) }
         );
         currentBalance = wallet.balance;
       } else {
         // For manual, do not credit balance until admin approval
-        const wallet = await Wallet.findOne({ userId }).session(session);
+        const wallet = await Wallet.findOne({ userId }).session(session || null);
         currentBalance = wallet ? wallet.balance : 0;
       }
 
-      await session.commitTransaction();
-      session.endSession();
+      if (session) {
+        await session.commitTransaction();
+        session.endSession();
+      }
 
       res.status(200).json({
         success: true,
@@ -63,8 +68,10 @@ router.post('/deposit', authMiddleware, async (req: AuthRequest, res: Response):
         transaction,
       });
     } catch (txError) {
-      await session.abortTransaction();
-      session.endSession();
+      if (session) {
+        await session.abortTransaction();
+        session.endSession();
+      }
       throw txError;
     }
   } catch (error) {
@@ -84,8 +91,10 @@ router.post('/withdraw', authMiddleware, async (req: AuthRequest, res: Response)
 
     const userId = req.user?.id;
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    const session = isTransactionSupported ? await mongoose.startSession() : null;
+    if (session) {
+      session.startTransaction();
+    }
 
     try {
       // Find wallet & check available balance atomically
@@ -93,13 +102,15 @@ router.post('/withdraw', authMiddleware, async (req: AuthRequest, res: Response)
       const wallet = await Wallet.findOneAndUpdate(
         { userId, balance: { $gte: amount } },
         { $inc: { balance: -amount, lockedBalance: amount } },
-        { new: true, session }
+        { new: true, ...(session ? { session } : {}) }
       );
 
       if (!wallet) {
         res.status(400).json({ success: false, error: 'Insufficient funds.' });
-        await session.abortTransaction();
-        session.endSession();
+        if (session) {
+          await session.abortTransaction();
+          session.endSession();
+        }
         return;
       }
 
@@ -111,10 +122,12 @@ router.post('/withdraw', authMiddleware, async (req: AuthRequest, res: Response)
         status: 'PENDING',
         description: 'Withdrawal request pending administrative approval.',
       });
-      await transaction.save({ session });
+      await transaction.save(session ? { session } : {});
 
-      await session.commitTransaction();
-      session.endSession();
+      if (session) {
+        await session.commitTransaction();
+        session.endSession();
+      }
 
       res.status(200).json({
         success: true,
@@ -123,8 +136,10 @@ router.post('/withdraw', authMiddleware, async (req: AuthRequest, res: Response)
         transaction,
       });
     } catch (txError) {
-      await session.abortTransaction();
-      session.endSession();
+      if (session) {
+        await session.abortTransaction();
+        session.endSession();
+      }
       throw txError;
     }
   } catch (error) {
@@ -166,8 +181,10 @@ router.post('/admin/withdrawal/:action', authMiddleware, adminMiddleware, async 
       return;
     }
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    const session = isTransactionSupported ? await mongoose.startSession() : null;
+    if (session) {
+      session.startTransaction();
+    }
 
     try {
       const withdrawalAmount = Math.abs(transaction.amount); // negative number stored in amount
@@ -177,50 +194,58 @@ router.post('/admin/withdrawal/:action', authMiddleware, adminMiddleware, async 
         const wallet = await Wallet.findOneAndUpdate(
           { userId: transaction.userId, lockedBalance: { $gte: withdrawalAmount } },
           { $inc: { lockedBalance: -withdrawalAmount } },
-          { new: true, session }
+          { new: true, ...(session ? { session } : {}) }
         );
 
         if (!wallet) {
           res.status(400).json({ success: false, error: 'Locked balance inconsistency.' });
-          await session.abortTransaction();
-          session.endSession();
+          if (session) {
+            await session.abortTransaction();
+            session.endSession();
+          }
           return;
         }
 
         transaction.status = 'SUCCESS';
         transaction.description = 'Withdrawal processed and approved.';
-        await transaction.save({ session });
+        await transaction.save(session ? { session } : {});
 
       } else {
         // Rejected withdrawal -> transfer lockedBalance back to available balance
         const wallet = await Wallet.findOneAndUpdate(
           { userId: transaction.userId, lockedBalance: { $gte: withdrawalAmount } },
           { $inc: { balance: withdrawalAmount, lockedBalance: -withdrawalAmount } },
-          { new: true, session }
+          { new: true, ...(session ? { session } : {}) }
         );
 
         if (!wallet) {
           res.status(400).json({ success: false, error: 'Locked balance inconsistency.' });
-          await session.abortTransaction();
-          session.endSession();
+          if (session) {
+            await session.abortTransaction();
+            session.endSession();
+          }
           return;
         }
 
         transaction.status = 'FAILED';
         transaction.description = 'Withdrawal request rejected by administrator.';
-        await transaction.save({ session });
+        await transaction.save(session ? { session } : {});
       }
 
-      await session.commitTransaction();
-      session.endSession();
+      if (session) {
+        await session.commitTransaction();
+        session.endSession();
+      }
 
       res.status(200).json({
         success: true,
         transaction,
       });
     } catch (txError) {
-      await session.abortTransaction();
-      session.endSession();
+      if (session) {
+        await session.abortTransaction();
+        session.endSession();
+      }
       throw txError;
     }
   } catch (error) {
@@ -246,8 +271,10 @@ router.post('/admin/deposit/:action', authMiddleware, adminMiddleware, async (re
       return;
     }
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    const session = isTransactionSupported ? await mongoose.startSession() : null;
+    if (session) {
+      session.startTransaction();
+    }
 
     try {
       if (action === 'approve') {
@@ -255,30 +282,34 @@ router.post('/admin/deposit/:action', authMiddleware, adminMiddleware, async (re
         const wallet = await Wallet.findOneAndUpdate(
           { userId: transaction.userId },
           { $inc: { balance: transaction.amount } },
-          { new: true, upsert: true, session }
+          { new: true, upsert: true, ...(session ? { session } : {}) }
         );
 
         transaction.status = 'SUCCESS';
         transaction.description = 'Manual deposit approved and credited.';
-        await transaction.save({ session });
+        await transaction.save(session ? { session } : {});
 
       } else {
         // Rejected manual deposit -> mark as FAILED
         transaction.status = 'FAILED';
         transaction.description = 'Manual deposit rejected by administrator.';
-        await transaction.save({ session });
+        await transaction.save(session ? { session } : {});
       }
 
-      await session.commitTransaction();
-      session.endSession();
+      if (session) {
+        await session.commitTransaction();
+        session.endSession();
+      }
 
       res.status(200).json({
         success: true,
         transaction,
       });
     } catch (txError) {
-      await session.abortTransaction();
-      session.endSession();
+      if (session) {
+        await session.abortTransaction();
+        session.endSession();
+      }
       throw txError;
     }
   } catch (error) {
@@ -303,8 +334,10 @@ router.post('/admin/override', authMiddleware, adminMiddleware, async (req: Auth
       return;
     }
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    const session = isTransactionSupported ? await mongoose.startSession() : null;
+    if (session) {
+      session.startTransaction();
+    }
 
     try {
       // Log audit transaction
@@ -315,7 +348,7 @@ router.post('/admin/override', authMiddleware, adminMiddleware, async (req: Auth
         status: 'SUCCESS',
         description: `Admin Override by ${req.user?.email}. Reason: ${reason}`,
       });
-      await transaction.save({ session });
+      await transaction.save(session ? { session } : {});
 
       // Perform update
       // Handled carefully to prevent negative balances
@@ -326,18 +359,22 @@ router.post('/admin/override', authMiddleware, adminMiddleware, async (req: Auth
       const wallet = await Wallet.findOneAndUpdate(
         { userId: targetUserId, ...(amount < 0 ? { balance: { $gte: Math.abs(amount) } } : {}) },
         { $inc: { balance: amount } },
-        { new: true, upsert: amount > 0, session }
+        { new: true, upsert: amount > 0, ...(session ? { session } : {}) }
       );
 
       if (!wallet) {
         res.status(400).json({ success: false, error: 'Failed to adjust balance. Would cause negative funds.' });
-        await session.abortTransaction();
-        session.endSession();
+        if (session) {
+          await session.abortTransaction();
+          session.endSession();
+        }
         return;
       }
 
-      await session.commitTransaction();
-      session.endSession();
+      if (session) {
+        await session.commitTransaction();
+        session.endSession();
+      }
 
       res.status(200).json({
         success: true,
@@ -345,8 +382,10 @@ router.post('/admin/override', authMiddleware, adminMiddleware, async (req: Auth
         transaction,
       });
     } catch (txError) {
-      await session.abortTransaction();
-      session.endSession();
+      if (session) {
+        await session.abortTransaction();
+        session.endSession();
+      }
       throw txError;
     }
   } catch (error) {

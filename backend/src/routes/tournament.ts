@@ -6,6 +6,7 @@ import { Wallet } from '../models/Wallet';
 import { Transaction } from '../models/Transaction';
 import { User } from '../models/User';
 import { authMiddleware, adminMiddleware, AuthRequest } from '../middleware/authMiddleware';
+import { isTransactionSupported } from '../config/db';
 
 const router = Router();
 
@@ -50,8 +51,10 @@ router.post('/register', authMiddleware, async (req: AuthRequest, res: Response)
       return;
     }
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    const session = isTransactionSupported ? await mongoose.startSession() : null;
+    if (session) {
+      session.startTransaction();
+    }
 
     try {
       // Deduct entry fee if any
@@ -59,13 +62,15 @@ router.post('/register', authMiddleware, async (req: AuthRequest, res: Response)
         const wallet = await Wallet.findOneAndUpdate(
           { userId, balance: { $gte: tournament.entryFee } },
           { $inc: { balance: -tournament.entryFee } },
-          { new: true, session }
+          { new: true, ...(session ? { session } : {}) }
         );
 
         if (!wallet) {
           res.status(400).json({ success: false, error: 'Insufficient balance to pay entry fee.' });
-          await session.abortTransaction();
-          session.endSession();
+          if (session) {
+            await session.abortTransaction();
+            session.endSession();
+          }
           return;
         }
 
@@ -78,7 +83,7 @@ router.post('/register', authMiddleware, async (req: AuthRequest, res: Response)
           description: `Paid entry fee for tournament: ${tournament.name}`,
           referenceId: tournament._id.toString(),
         });
-        await transaction.save({ session });
+        await transaction.save(session ? { session } : {});
       }
 
       // Add to participants list
@@ -88,15 +93,19 @@ router.post('/register', authMiddleware, async (req: AuthRequest, res: Response)
         score: 0,
         status: 'ACTIVE'
       });
-      await tournament.save({ session });
+      await tournament.save(session ? { session } : {});
 
-      await session.commitTransaction();
-      session.endSession();
+      if (session) {
+        await session.commitTransaction();
+        session.endSession();
+      }
 
       res.status(200).json({ success: true, tournament });
     } catch (txError) {
-      await session.abortTransaction();
-      session.endSession();
+      if (session) {
+        await session.abortTransaction();
+        session.endSession();
+      }
       throw txError;
     }
   } catch (error) {
@@ -156,8 +165,10 @@ router.post('/admin/start', authMiddleware, adminMiddleware, async (req: AuthReq
       return;
     }
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    const session = isTransactionSupported ? await mongoose.startSession() : null;
+    if (session) {
+      session.startTransaction();
+    }
 
     try {
       tournament.status = 'ACTIVE';
@@ -195,7 +206,7 @@ router.post('/admin/start', authMiddleware, adminMiddleware, async (req: AuthReq
       }
 
       // Save matches inside transaction
-      const savedMatches = await Match.insertMany(matchesToCreate, { session });
+      const savedMatches = await Match.insertMany(matchesToCreate, session ? { session } : {});
 
       // Add pairings to tournament brackets
       savedMatches.forEach((savedMatch, idx) => {
@@ -207,15 +218,19 @@ router.post('/admin/start', authMiddleware, adminMiddleware, async (req: AuthReq
         });
       });
 
-      await tournament.save({ session });
+      await tournament.save(session ? { session } : {});
 
-      await session.commitTransaction();
-      session.endSession();
+      if (session) {
+        await session.commitTransaction();
+        session.endSession();
+      }
 
       res.status(200).json({ success: true, tournament, matchesCreatedCount: savedMatches.length });
     } catch (txError) {
-      await session.abortTransaction();
-      session.endSession();
+      if (session) {
+        await session.abortTransaction();
+        session.endSession();
+      }
       throw txError;
     }
   } catch (error) {

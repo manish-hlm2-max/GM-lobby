@@ -8,6 +8,7 @@ import { User } from '../models/User';
 import { Wallet } from '../models/Wallet';
 import { Transaction } from '../models/Transaction';
 import { seedBots } from '../config/botSeeder';
+import { isTransactionSupported } from '../config/db';
 
 // Map of active timers for running games
 const gameTimers: { [matchId: string]: NodeJS.Timeout } = {};
@@ -208,14 +209,16 @@ const concludeMatch = async (
   winnerId: string | undefined,
   io: Server
 ) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const session = isTransactionSupported ? await mongoose.startSession() : null;
+  if (session) {
+    session.startTransaction();
+  }
 
   try {
     match.status = 'COMPLETED';
     match.result = result;
     match.winnerId = winnerId ? new mongoose.Types.ObjectId(winnerId) : undefined;
-    await match.save({ session });
+    await match.save({ session: session || undefined });
 
     const whiteId = match.whitePlayerId!.toString();
     const blackId = match.blackPlayerId!.toString();
@@ -227,12 +230,12 @@ const concludeMatch = async (
         await Wallet.findOneAndUpdate(
           { userId: whiteId },
           { $inc: { balance: match.entryFee, lockedBalance: -match.entryFee } },
-          { session }
+          { session: session || undefined }
         );
         await Wallet.findOneAndUpdate(
           { userId: blackId },
           { $inc: { balance: match.entryFee, lockedBalance: -match.entryFee } },
-          { session }
+          { session: session || undefined }
         );
 
         // Save transaction refund logs
@@ -243,7 +246,7 @@ const concludeMatch = async (
           status: 'SUCCESS',
           description: `Entry Fee refunded due to Draw.`,
           referenceId: match._id.toString(),
-        }).save({ session });
+        }).save({ session: session || undefined });
 
         await new Transaction({
           userId: blackId,
@@ -252,7 +255,7 @@ const concludeMatch = async (
           status: 'SUCCESS',
           description: `Entry Fee refunded due to Draw.`,
           referenceId: match._id.toString(),
-        }).save({ session });
+        }).save({ session: session || undefined });
 
       } else {
         // Winner gets the prize pool, loser loses their locked fee
@@ -263,14 +266,14 @@ const concludeMatch = async (
         await Wallet.findOneAndUpdate(
           { userId: loser },
           { $inc: { lockedBalance: -match.entryFee } },
-          { session }
+          { session: session || undefined }
         );
 
         // Credit winner: remove entry fee lock, add prize pool
         await Wallet.findOneAndUpdate(
           { userId: winner },
           { $inc: { balance: match.prizePool, lockedBalance: -match.entryFee } },
-          { session }
+          { session: session || undefined }
         );
 
         // Log transaction logs
@@ -281,7 +284,7 @@ const concludeMatch = async (
           status: 'SUCCESS',
           description: `Payout for winning match ${match._id}.`,
           referenceId: match._id.toString(),
-        }).save({ session });
+        }).save({ session: session || undefined });
       }
     }
 
@@ -320,8 +323,8 @@ const concludeMatch = async (
         blackUser.draws += 1;
       }
 
-      await whiteUser.save({ session });
-      await blackUser.save({ session });
+      await whiteUser.save({ session: session || undefined });
+      await blackUser.save({ session: session || undefined });
     }
 
     // 3. Tournament updates & progression
@@ -385,7 +388,7 @@ const concludeMatch = async (
               await Wallet.findOneAndUpdate(
                 { userId: winner.userId },
                 { $inc: { balance: payoutPerWinner } },
-                { session }
+                { session: session || undefined }
               );
 
               // Log transaction
@@ -396,7 +399,7 @@ const concludeMatch = async (
                 status: 'SUCCESS',
                 description: `Prize payout for winning tournament: ${tournament.name}`,
                 referenceId: tournament._id.toString()
-              }).save({ session });
+              }).save({ session: session || undefined });
             }
           }
           console.log(`concludeMatch: Concluded tournament ${tournament._id}. Winners count: ${winners.length}`);
@@ -432,7 +435,7 @@ const concludeMatch = async (
           }
 
           if (matchesToCreate.length > 0) {
-            const savedMatches = await Match.insertMany(matchesToCreate, { session });
+            const savedMatches = await Match.insertMany(matchesToCreate, session ? { session } : {});
             savedMatches.forEach(m => {
               tournament.brackets.push({
                 round: tournament.currentRound,
@@ -446,19 +449,23 @@ const concludeMatch = async (
         }
       }
 
-      await tournament.save({ session });
+      await tournament.save({ session: session || undefined });
     }
 
-    await session.commitTransaction();
-    session.endSession();
+    if (session) {
+      await session.commitTransaction();
+      session.endSession();
+    }
 
     // Broadcast update
     io.to(match._id.toString()).emit('match_state', match);
     io.to(match._id.toString()).emit('game_ended', { result, winnerId });
 
   } catch (err) {
-    await session.abortTransaction();
-    session.endSession();
+    if (session) {
+      await session.abortTransaction();
+      session.endSession();
+    }
     console.error('concludeMatch Transaction Aborted:', err);
   }
 };
@@ -599,9 +606,9 @@ export const startBotScheduler = (io: Server) => {
         const freshMatch = await Match.findById(match._id);
         if (!freshMatch || freshMatch.status !== 'WAITING') continue;
 
-        // ONLY auto-join if the match was created at least 15 seconds ago
+        // ONLY auto-join if the match was created at least 30 seconds ago
         const elapsedMs = Date.now() - new Date(freshMatch.createdAt).getTime();
-        if (elapsedMs < 15000) {
+        if (elapsedMs < 30000) {
           continue;
         }
 
@@ -618,8 +625,10 @@ export const startBotScheduler = (io: Server) => {
         const randomBot = bots[Math.floor(Math.random() * bots.length)];
 
         // Make the bot join the match!
-        const session = await mongoose.startSession();
-        session.startTransaction();
+        const session = isTransactionSupported ? await mongoose.startSession() : null;
+        if (session) {
+          session.startTransaction();
+        }
 
         try {
           // If entryFee > 0, deduct from bot wallet
@@ -627,12 +636,14 @@ export const startBotScheduler = (io: Server) => {
             const botWallet = await Wallet.findOneAndUpdate(
               { userId: randomBot._id, balance: { $gte: freshMatch.entryFee } },
               { $inc: { balance: -freshMatch.entryFee, lockedBalance: freshMatch.entryFee } },
-              { new: true, session }
+              { new: true, ...(session ? { session } : {}) }
             );
 
             if (!botWallet) {
-              await session.abortTransaction();
-              session.endSession();
+              if (session) {
+                await session.abortTransaction();
+                session.endSession();
+              }
               continue;
             }
 
@@ -644,7 +655,7 @@ export const startBotScheduler = (io: Server) => {
               status: 'SUCCESS',
               description: `Entry Fee to join match (Bot Player).`,
             });
-            await transaction.save({ session });
+            await transaction.save(session ? { session } : {});
           }
 
           // Assign bot to empty slot
@@ -657,10 +668,12 @@ export const startBotScheduler = (io: Server) => {
           }
 
           freshMatch.status = 'RUNNING';
-          await freshMatch.save({ session });
+          await freshMatch.save(session ? { session } : {});
 
-          await session.commitTransaction();
-          session.endSession();
+          if (session) {
+            await session.commitTransaction();
+            session.endSession();
+          }
 
           console.log(`Bot ${randomBot.username} joined match ${freshMatch._id}`);
 
@@ -671,8 +684,10 @@ export const startBotScheduler = (io: Server) => {
           triggerBotMoveIfActive(freshMatch._id.toString(), io);
 
         } catch (txError) {
-          await session.abortTransaction();
-          session.endSession();
+          if (session) {
+            await session.abortTransaction();
+            session.endSession();
+          }
           console.error(`Error in bot auto-join transaction for match ${freshMatch._id}:`, txError);
         }
       }

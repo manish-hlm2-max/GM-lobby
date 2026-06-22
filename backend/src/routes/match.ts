@@ -6,6 +6,7 @@ import { Transaction } from '../models/Transaction';
 import { User } from '../models/User';
 import { authMiddleware, AuthRequest } from '../middleware/authMiddleware';
 import { getIoInstance, triggerBotMoveIfActive } from '../sockets/gameSocket';
+import { isTransactionSupported } from '../config/db';
 
 const router = Router();
 
@@ -48,8 +49,10 @@ router.post('/create', authMiddleware, async (req: AuthRequest, res: Response): 
       return;
     }
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    const session = isTransactionSupported ? await mongoose.startSession() : null;
+    if (session) {
+      session.startTransaction();
+    }
 
     try {
       // 1. Deduct entry fee from host if entryFee > 0
@@ -57,13 +60,15 @@ router.post('/create', authMiddleware, async (req: AuthRequest, res: Response): 
         const hostWallet = await Wallet.findOneAndUpdate(
           { userId, balance: { $gte: entryFee } },
           { $inc: { balance: -entryFee, lockedBalance: entryFee } },
-          { new: true, session }
+          { new: true, ...(session ? { session } : {}) }
         );
 
         if (!hostWallet) {
           res.status(400).json({ success: false, error: 'Insufficient wallet balance for entry fee.' });
-          await session.abortTransaction();
-          session.endSession();
+          if (session) {
+            await session.abortTransaction();
+            session.endSession();
+          }
           return;
         }
 
@@ -75,7 +80,7 @@ router.post('/create', authMiddleware, async (req: AuthRequest, res: Response): 
           status: 'SUCCESS',
           description: `Entry Fee for hosting match.`,
         });
-        await transaction.save({ session });
+        await transaction.save(session ? { session } : {});
       }
 
       // Determine color alignment
@@ -92,18 +97,22 @@ router.post('/create', authMiddleware, async (req: AuthRequest, res: Response): 
         timeControl,
         status: 'WAITING',
       });
-      await newMatch.save({ session });
+      await newMatch.save(session ? { session } : {});
 
-      await session.commitTransaction();
-      session.endSession();
+      if (session) {
+        await session.commitTransaction();
+        session.endSession();
+      }
 
       res.status(201).json({
         success: true,
         match: newMatch,
       });
     } catch (txError) {
-      await session.abortTransaction();
-      session.endSession();
+      if (session) {
+        await session.abortTransaction();
+        session.endSession();
+      }
       throw txError;
     }
   } catch (error) {
@@ -141,8 +150,10 @@ router.post('/join', authMiddleware, async (req: AuthRequest, res: Response): Pr
       return;
     }
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    const session = isTransactionSupported ? await mongoose.startSession() : null;
+    if (session) {
+      session.startTransaction();
+    }
 
     try {
       // 1. Deduct entry fee if entryFee > 0
@@ -150,13 +161,15 @@ router.post('/join', authMiddleware, async (req: AuthRequest, res: Response): Pr
         const playerWallet = await Wallet.findOneAndUpdate(
           { userId, balance: { $gte: match.entryFee } },
           { $inc: { balance: -match.entryFee, lockedBalance: match.entryFee } },
-          { new: true, session }
+          { new: true, ...(session ? { session } : {}) }
         );
 
         if (!playerWallet) {
           res.status(400).json({ success: false, error: 'Insufficient wallet balance to join.' });
-          await session.abortTransaction();
-          session.endSession();
+          if (session) {
+            await session.abortTransaction();
+            session.endSession();
+          }
           return;
         }
 
@@ -168,7 +181,7 @@ router.post('/join', authMiddleware, async (req: AuthRequest, res: Response): Pr
           status: 'SUCCESS',
           description: `Entry Fee to join match.`,
         });
-        await transaction.save({ session });
+        await transaction.save(session ? { session } : {});
       }
 
       // Assign the remaining player slot
@@ -181,18 +194,22 @@ router.post('/join', authMiddleware, async (req: AuthRequest, res: Response): Pr
       }
 
       match.status = 'RUNNING';
-      await match.save({ session });
+      await match.save(session ? { session } : {});
 
-      await session.commitTransaction();
-      session.endSession();
+      if (session) {
+        await session.commitTransaction();
+        session.endSession();
+      }
 
       res.status(200).json({
         success: true,
         match,
       });
     } catch (txError) {
-      await session.abortTransaction();
-      session.endSession();
+      if (session) {
+        await session.abortTransaction();
+        session.endSession();
+      }
       throw txError;
     }
   } catch (error) {
@@ -285,21 +302,25 @@ router.post('/matchmake', authMiddleware, async (req: AuthRequest, res: Response
     });
 
     if (existingMatch) {
-      const session = await mongoose.startSession();
-      session.startTransaction();
+      const session = isTransactionSupported ? await mongoose.startSession() : null;
+      if (session) {
+        session.startTransaction();
+      }
 
       try {
         if (entryFee > 0) {
           const playerWallet = await Wallet.findOneAndUpdate(
             { userId, balance: { $gte: entryFee } },
             { $inc: { balance: -entryFee, lockedBalance: entryFee } },
-            { new: true, session }
+            { new: true, ...(session ? { session } : {}) }
           );
 
           if (!playerWallet) {
             res.status(400).json({ success: false, error: 'Insufficient wallet balance.' });
-            await session.abortTransaction();
-            session.endSession();
+            if (session) {
+              await session.abortTransaction();
+              session.endSession();
+            }
             return;
           }
 
@@ -309,7 +330,7 @@ router.post('/matchmake', authMiddleware, async (req: AuthRequest, res: Response
             type: 'MATCH_ENTRY',
             status: 'SUCCESS',
             description: `Entry Fee to join matchmaking match.`,
-          }).save({ session });
+          }).save(session ? { session } : {});
         }
 
         if (!existingMatch.whitePlayerId) {
@@ -321,10 +342,12 @@ router.post('/matchmake', authMiddleware, async (req: AuthRequest, res: Response
         }
 
         existingMatch.status = 'RUNNING';
-        await existingMatch.save({ session });
+        await existingMatch.save(session ? { session } : {});
 
-        await session.commitTransaction();
-        session.endSession();
+        if (session) {
+          await session.commitTransaction();
+          session.endSession();
+        }
 
         const io = getIoInstance();
         if (io) {
@@ -337,28 +360,34 @@ router.post('/matchmake', authMiddleware, async (req: AuthRequest, res: Response
         });
         return;
       } catch (txError) {
-        await session.abortTransaction();
-        session.endSession();
+        if (session) {
+          await session.abortTransaction();
+          session.endSession();
+        }
         throw txError;
       }
     }
 
     // 2. No matching match found -> Create a new WAITING match
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    const session = isTransactionSupported ? await mongoose.startSession() : null;
+    if (session) {
+      session.startTransaction();
+    }
 
     try {
       if (entryFee > 0) {
         const hostWallet = await Wallet.findOneAndUpdate(
           { userId, balance: { $gte: entryFee } },
           { $inc: { balance: -entryFee, lockedBalance: entryFee } },
-          { new: true, session }
+          { new: true, ...(session ? { session } : {}) }
         );
 
         if (!hostWallet) {
           res.status(400).json({ success: false, error: 'Insufficient wallet balance.' });
-          await session.abortTransaction();
-          session.endSession();
+          if (session) {
+            await session.abortTransaction();
+            session.endSession();
+          }
           return;
         }
 
@@ -368,7 +397,7 @@ router.post('/matchmake', authMiddleware, async (req: AuthRequest, res: Response
           type: 'MATCH_ENTRY',
           status: 'SUCCESS',
           description: `Entry Fee for hosting matchmaking match.`,
-        }).save({ session });
+        }).save(session ? { session } : {});
       }
 
       const isWhite = Math.random() > 0.5;
@@ -383,18 +412,22 @@ router.post('/matchmake', authMiddleware, async (req: AuthRequest, res: Response
         timeControl,
         status: 'WAITING',
       });
-      await newMatch.save({ session });
+      await newMatch.save(session ? { session } : {});
 
-      await session.commitTransaction();
-      session.endSession();
+      if (session) {
+        await session.commitTransaction();
+        session.endSession();
+      }
 
       res.status(201).json({
         success: true,
         match: newMatch,
       });
     } catch (txError) {
-      await session.abortTransaction();
-      session.endSession();
+      if (session) {
+        await session.abortTransaction();
+        session.endSession();
+      }
       throw txError;
     }
   } catch (error) {
@@ -427,21 +460,25 @@ router.post('/force-bot-join', authMiddleware, async (req: AuthRequest, res: Res
 
     const bot = bots[Math.floor(Math.random() * bots.length)];
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    const session = isTransactionSupported ? await mongoose.startSession() : null;
+    if (session) {
+      session.startTransaction();
+    }
 
     try {
       if (match.entryFee > 0) {
         const botWallet = await Wallet.findOneAndUpdate(
           { userId: bot._id, balance: { $gte: match.entryFee } },
           { $inc: { balance: -match.entryFee, lockedBalance: match.entryFee } },
-          { new: true, session }
+          { new: true, ...(session ? { session } : {}) }
         );
 
         if (!botWallet) {
           res.status(400).json({ success: false, error: 'Bot wallet balance insufficient.' });
-          await session.abortTransaction();
-          session.endSession();
+          if (session) {
+            await session.abortTransaction();
+            session.endSession();
+          }
           return;
         }
 
@@ -451,7 +488,7 @@ router.post('/force-bot-join', authMiddleware, async (req: AuthRequest, res: Res
           type: 'MATCH_ENTRY',
           status: 'SUCCESS',
           description: `Entry Fee to join matchmaking match (Bot Player).`,
-        }).save({ session });
+        }).save(session ? { session } : {});
       }
 
       if (!match.whitePlayerId) {
@@ -463,10 +500,12 @@ router.post('/force-bot-join', authMiddleware, async (req: AuthRequest, res: Res
       }
 
       match.status = 'RUNNING';
-      await match.save({ session });
+      await match.save(session ? { session } : {});
 
-      await session.commitTransaction();
-      session.endSession();
+      if (session) {
+        await session.commitTransaction();
+        session.endSession();
+      }
 
       const io = getIoInstance();
       if (io) {
@@ -479,8 +518,10 @@ router.post('/force-bot-join', authMiddleware, async (req: AuthRequest, res: Res
         match,
       });
     } catch (txError) {
-      await session.abortTransaction();
-      session.endSession();
+      if (session) {
+        await session.abortTransaction();
+        session.endSession();
+      }
       throw txError;
     }
   } catch (error) {
@@ -511,18 +552,20 @@ router.post('/cancel-matchmake', authMiddleware, async (req: AuthRequest, res: R
       return;
     }
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    const session = isTransactionSupported ? await mongoose.startSession() : null;
+    if (session) {
+      session.startTransaction();
+    }
 
     try {
       match.status = 'ABORTED';
-      await match.save({ session });
+      await match.save(session ? { session } : {});
 
       if (match.entryFee > 0) {
         await Wallet.findOneAndUpdate(
           { userId },
           { $inc: { balance: match.entryFee, lockedBalance: -match.entryFee } },
-          { session }
+          session ? { session } : {}
         );
 
         await new Transaction({
@@ -532,19 +575,23 @@ router.post('/cancel-matchmake', authMiddleware, async (req: AuthRequest, res: R
           status: 'SUCCESS',
           description: `Refund for cancelled matchmaking match.`,
           referenceId: match._id.toString(),
-        }).save({ session });
+        }).save(session ? { session } : {});
       }
 
-      await session.commitTransaction();
-      session.endSession();
+      if (session) {
+        await session.commitTransaction();
+        session.endSession();
+      }
 
       res.status(200).json({
         success: true,
         message: 'Matchmaking search cancelled, entry fee refunded.',
       });
     } catch (txError) {
-      await session.abortTransaction();
-      session.endSession();
+      if (session) {
+        await session.abortTransaction();
+        session.endSession();
+      }
       throw txError;
     }
   } catch (error) {

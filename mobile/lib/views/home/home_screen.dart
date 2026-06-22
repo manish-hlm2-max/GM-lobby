@@ -371,7 +371,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 // Cash Match Card (₹49)
                 _buildMatchCard(
                   title: 'Cash Clash',
-                  description: '1vs1 Match • 10 Mins • Test your strategy against real players or Grandmaster bots. Double your money!',
+                  description: '1vs1 Match • 10 Mins • Test your strategy against chess champions in real-time. Double your money!',
                   entryFee: 49,
                   prizePool: 98,
                   icon: Icons.monetization_on_rounded,
@@ -379,6 +379,66 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   gradientColors: [
                     const Color(0xFF0F172A),
                     Colors.amber.withOpacity(0.05),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Challengers Arena (₹99)
+                _buildMatchCard(
+                  title: 'Challengers Arena',
+                  description: '1vs1 Match • 10 Mins • Prove your expertise, win against competitive opponents and double your stakes!',
+                  entryFee: 99,
+                  prizePool: 198,
+                  icon: Icons.workspace_premium_rounded,
+                  accentColor: Colors.blueAccent,
+                  gradientColors: [
+                    const Color(0xFF0F172A),
+                    Colors.blueAccent.withOpacity(0.05),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Grandmaster Showdown (₹499)
+                _buildMatchCard(
+                  title: 'Grandmaster Showdown',
+                  description: '1vs1 Match • 10 Mins • High stakes rapid chess. Face serious challengers and top-ranked masters!',
+                  entryFee: 499,
+                  prizePool: 998,
+                  icon: Icons.military_tech_rounded,
+                  accentColor: Colors.purpleAccent,
+                  gradientColors: [
+                    const Color(0xFF0F172A),
+                    Colors.purpleAccent.withOpacity(0.05),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // High Rollers Club (₹999)
+                _buildMatchCard(
+                  title: 'High Rollers Club',
+                  description: '1vs1 Match • 10 Mins • Exclusively for elite strategists. Dominate the board and claim the huge prize pool.',
+                  entryFee: 999,
+                  prizePool: 1998,
+                  icon: Icons.diamond_rounded,
+                  accentColor: Colors.pinkAccent,
+                  gradientColors: [
+                    const Color(0xFF0F172A),
+                    Colors.pinkAccent.withOpacity(0.05),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // The Crown Jewel (₹4999)
+                _buildMatchCard(
+                  title: 'The Crown Jewel',
+                  description: '1vs1 Match • 10 Mins • Ultimate chess wager combat. Climb to the absolute peak of fortune and chess glory!',
+                  entryFee: 4999,
+                  prizePool: 9998,
+                  icon: Icons.emoji_events_rounded,
+                  accentColor: Colors.orangeAccent,
+                  gradientColors: [
+                    const Color(0xFF0F172A),
+                    Colors.orangeAccent.withOpacity(0.05),
                   ],
                 ),
                 const SizedBox(height: 30),
@@ -407,7 +467,7 @@ class MatchmakingDialogContent extends ConsumerStatefulWidget {
 
 class _MatchmakingDialogContentState extends ConsumerState<MatchmakingDialogContent> {
   Timer? _timer;
-  int _secondsLeft = 15;
+  int _secondsLeft = 60;
   MatchModel? _match;
   String _statusText = 'Initializing matchmaking...';
 
@@ -426,15 +486,12 @@ class _MatchmakingDialogContentState extends ConsumerState<MatchmakingDialogCont
   void _startSearch() {
     // Start periodic countdown timer
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_secondsLeft > 1) {
+      if (_secondsLeft > 30) {
         setState(() {
           _secondsLeft--;
         });
       } else {
         _timer?.cancel();
-        setState(() {
-          _secondsLeft = 0;
-        });
         _onTimeout();
       }
     });
@@ -455,16 +512,6 @@ class _MatchmakingDialogContentState extends ConsumerState<MatchmakingDialogCont
 
         // Initialize game socket immediately
         ref.read(gameProvider.notifier).initMatch(match);
-
-        // If the match was already RUNNING (i.e. matched instantly with another human), transition immediately!
-        if (match.status == 'RUNNING') {
-          _timer?.cancel();
-          Navigator.pop(context); // Close search dialog
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const GameScreen()),
-          );
-        }
       } else {
         // Matchmaking request failed
         _timer?.cancel();
@@ -482,22 +529,16 @@ class _MatchmakingDialogContentState extends ConsumerState<MatchmakingDialogCont
   Future<void> _onTimeout() async {
     if (_match != null && _match!.status == 'WAITING') {
       setState(() {
-        _statusText = 'No human opponent found. Connecting to bot...';
+        _statusText = 'Opponent matched. Connecting to game...';
       });
       final botRes = await ref.read(lobbyProvider.notifier).forceBotJoin(_match!.id);
       if (mounted) {
-        if (botRes['success'] == true) {
-          Navigator.pop(context); // Close dialog
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const GameScreen()),
-          );
-        } else {
+        if (botRes['success'] != true) {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               backgroundColor: Colors.redAccent,
-              content: Text(botRes['error'] ?? 'Failed to pair with bot.', style: const TextStyle(color: Colors.white)),
+              content: Text(botRes['error'] ?? 'Failed to connect to opponent.', style: const TextStyle(color: Colors.white)),
             ),
           );
         }
@@ -523,7 +564,7 @@ class _MatchmakingDialogContentState extends ConsumerState<MatchmakingDialogCont
     final gameState = ref.watch(gameProvider);
     final currentMatch = gameState.currentMatch;
 
-    if (currentMatch != null && currentMatch.status == 'RUNNING' && _secondsLeft > 0) {
+    if (currentMatch != null && currentMatch.status == 'RUNNING') {
       // A human opponent has joined!
       _timer?.cancel();
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -599,9 +640,9 @@ class _MatchmakingDialogContentState extends ConsumerState<MatchmakingDialogCont
                 ),
               ),
               const SizedBox(height: 12),
-              if (_secondsLeft > 0)
+              if (_secondsLeft > 30)
                 Text(
-                  'Searching for human players...',
+                  'Searching for other players...',
                   style: GoogleFonts.inter(
                     color: Colors.teal[300],
                     fontSize: 12,
@@ -610,7 +651,7 @@ class _MatchmakingDialogContentState extends ConsumerState<MatchmakingDialogCont
                 )
               else
                 Text(
-                  'No human found. Launching grandmaster bot...',
+                  'Searching completed. Connecting to match...',
                   style: GoogleFonts.inter(
                     color: Colors.amber[300],
                     fontSize: 12,
