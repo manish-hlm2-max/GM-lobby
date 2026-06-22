@@ -6,7 +6,6 @@ import { Transaction } from '../models/Transaction';
 import { User } from '../models/User';
 import { authMiddleware, AuthRequest } from '../middleware/authMiddleware';
 import { getIoInstance, triggerBotMoveIfActive } from '../sockets/gameSocket';
-import { isTransactionSupported } from '../config/db';
 
 const router = Router();
 
@@ -49,74 +48,50 @@ router.post('/create', authMiddleware, async (req: AuthRequest, res: Response): 
       return;
     }
 
-    const session = isTransactionSupported ? await mongoose.startSession() : null;
-    if (session) {
-      session.startTransaction();
+    // 1. Deduct entry fee from host if entryFee > 0
+    if (entryFee > 0) {
+      const hostWallet = await Wallet.findOneAndUpdate(
+        { userId, balance: { $gte: entryFee } },
+        { $inc: { balance: -entryFee, lockedBalance: entryFee } },
+        { new: true }
+      );
+
+      if (!hostWallet) {
+        res.status(400).json({ success: false, error: 'Insufficient wallet balance for entry fee.' });
+        return;
+      }
+
+      await new Transaction({
+        userId,
+        amount: -entryFee,
+        type: 'MATCH_ENTRY',
+        status: 'SUCCESS',
+        description: `Entry Fee for hosting match.`,
+      }).save();
     }
 
-    try {
-      // 1. Deduct entry fee from host if entryFee > 0
-      if (entryFee > 0) {
-        const hostWallet = await Wallet.findOneAndUpdate(
-          { userId, balance: { $gte: entryFee } },
-          { $inc: { balance: -entryFee, lockedBalance: entryFee } },
-          { new: true, ...(session ? { session } : {}) }
-        );
+    // Determine color alignment
+    const isWhite = preferredColor === 'black' ? false : true;
 
-        if (!hostWallet) {
-          res.status(400).json({ success: false, error: 'Insufficient wallet balance for entry fee.' });
-          if (session) {
-            await session.abortTransaction();
-            session.endSession();
-          }
-          return;
-        }
+    // 2. Create Match Object
+    const newMatch = new Match({
+      whitePlayerId: isWhite ? userId : undefined,
+      blackPlayerId: isWhite ? undefined : userId,
+      whiteUsername: isWhite ? hostUser.username : undefined,
+      blackUsername: isWhite ? undefined : hostUser.username,
+      entryFee,
+      prizePool: entryFee * 2.0,
+      timeControl,
+      status: 'WAITING',
+    });
+    await newMatch.save();
 
-        // Create transaction log
-        const transaction = new Transaction({
-          userId,
-          amount: -entryFee,
-          type: 'MATCH_ENTRY',
-          status: 'SUCCESS',
-          description: `Entry Fee for hosting match.`,
-        });
-        await transaction.save(session ? { session } : {});
-      }
-
-      // Determine color alignment
-      const isWhite = preferredColor === 'black' ? false : true;
-
-      // 2. Create Match Object
-      const newMatch = new Match({
-        whitePlayerId: isWhite ? userId : undefined,
-        blackPlayerId: isWhite ? undefined : userId,
-        whiteUsername: isWhite ? hostUser.username : undefined,
-        blackUsername: isWhite ? undefined : hostUser.username,
-        entryFee,
-        prizePool: entryFee * 2.0, // winner gets double the entry fee
-        timeControl,
-        status: 'WAITING',
-      });
-      await newMatch.save(session ? { session } : {});
-
-      if (session) {
-        await session.commitTransaction();
-        session.endSession();
-      }
-
-      res.status(201).json({
-        success: true,
-        match: newMatch,
-      });
-    } catch (txError) {
-      if (session) {
-        await session.abortTransaction();
-        session.endSession();
-      }
-      throw txError;
-    }
-  } catch (error) {
-    console.error('Create match error:', error);
+    res.status(201).json({
+      success: true,
+      match: newMatch,
+    });
+  } catch (error: any) {
+    console.error('[CREATE-MATCH] Error:', error.message, error.stack);
     res.status(500).json({ success: false, error: 'Server error creating match lobby.' });
   }
 });
@@ -150,70 +125,46 @@ router.post('/join', authMiddleware, async (req: AuthRequest, res: Response): Pr
       return;
     }
 
-    const session = isTransactionSupported ? await mongoose.startSession() : null;
-    if (session) {
-      session.startTransaction();
+    // 1. Deduct entry fee if entryFee > 0
+    if (match.entryFee > 0) {
+      const playerWallet = await Wallet.findOneAndUpdate(
+        { userId, balance: { $gte: match.entryFee } },
+        { $inc: { balance: -match.entryFee, lockedBalance: match.entryFee } },
+        { new: true }
+      );
+
+      if (!playerWallet) {
+        res.status(400).json({ success: false, error: 'Insufficient wallet balance to join.' });
+        return;
+      }
+
+      await new Transaction({
+        userId,
+        amount: -match.entryFee,
+        type: 'MATCH_ENTRY',
+        status: 'SUCCESS',
+        description: `Entry Fee to join match.`,
+      }).save();
     }
 
-    try {
-      // 1. Deduct entry fee if entryFee > 0
-      if (match.entryFee > 0) {
-        const playerWallet = await Wallet.findOneAndUpdate(
-          { userId, balance: { $gte: match.entryFee } },
-          { $inc: { balance: -match.entryFee, lockedBalance: match.entryFee } },
-          { new: true, ...(session ? { session } : {}) }
-        );
-
-        if (!playerWallet) {
-          res.status(400).json({ success: false, error: 'Insufficient wallet balance to join.' });
-          if (session) {
-            await session.abortTransaction();
-            session.endSession();
-          }
-          return;
-        }
-
-        // Create transaction log
-        const transaction = new Transaction({
-          userId,
-          amount: -match.entryFee,
-          type: 'MATCH_ENTRY',
-          status: 'SUCCESS',
-          description: `Entry Fee to join match.`,
-        });
-        await transaction.save(session ? { session } : {});
-      }
-
-      // Assign the remaining player slot
-      if (!match.whitePlayerId) {
-        match.whitePlayerId = new mongoose.Types.ObjectId(userId);
-        match.whiteUsername = player.username;
-      } else {
-        match.blackPlayerId = new mongoose.Types.ObjectId(userId);
-        match.blackUsername = player.username;
-      }
-
-      match.status = 'RUNNING';
-      await match.save(session ? { session } : {});
-
-      if (session) {
-        await session.commitTransaction();
-        session.endSession();
-      }
-
-      res.status(200).json({
-        success: true,
-        match,
-      });
-    } catch (txError) {
-      if (session) {
-        await session.abortTransaction();
-        session.endSession();
-      }
-      throw txError;
+    // Assign the remaining player slot
+    if (!match.whitePlayerId) {
+      match.whitePlayerId = new mongoose.Types.ObjectId(userId);
+      match.whiteUsername = player.username;
+    } else {
+      match.blackPlayerId = new mongoose.Types.ObjectId(userId);
+      match.blackUsername = player.username;
     }
-  } catch (error) {
-    console.error('Join match error:', error);
+
+    match.status = 'RUNNING';
+    await match.save();
+
+    res.status(200).json({
+      success: true,
+      match,
+    });
+  } catch (error: any) {
+    console.error('[JOIN-MATCH] Error:', error.message, error.stack);
     res.status(500).json({ success: false, error: 'Server error joining match lobby.' });
   }
 });
@@ -271,7 +222,9 @@ router.post('/matchmake', authMiddleware, async (req: AuthRequest, res: Response
     const { entryFee, timeControl } = req.body;
     const userId = req.user?.id;
 
-    if (entryFee < 0) {
+    console.log('[MATCHMAKE] Request received:', { userId, entryFee, timeControl });
+
+    if (entryFee === undefined || entryFee === null || entryFee < 0) {
       res.status(400).json({ success: false, error: 'Entry fee cannot be negative.' });
       return;
     }
@@ -282,72 +235,78 @@ router.post('/matchmake', authMiddleware, async (req: AuthRequest, res: Response
 
     const player = await User.findById(userId);
     if (!player) {
+      console.log('[MATCHMAKE] User not found:', userId);
       res.status(404).json({ success: false, error: 'User not found.' });
       return;
     }
+    console.log('[MATCHMAKE] Player found:', player.username);
+
+    // Convert entryFee to number to avoid type mismatch issues
+    const numericEntryFee = Number(entryFee);
+    const numericTimeControl = Number(timeControl);
 
     // 1. Search for a WAITING match with same entry fee and time control hosted by another user
-    const existingMatch = await Match.findOne({
-      status: 'WAITING',
-      entryFee,
-      timeControl,
-      $or: [
-        { whitePlayerId: { $exists: false } },
-        { blackPlayerId: { $exists: false } },
-        { whitePlayerId: null },
-        { blackPlayerId: null }
-      ],
-      whitePlayerId: { $ne: new mongoose.Types.ObjectId(userId) },
-      blackPlayerId: { $ne: new mongoose.Types.ObjectId(userId) }
-    });
+    const userObjId = new mongoose.Types.ObjectId(userId);
+    let existingMatch = null;
+    try {
+      existingMatch = await Match.findOne({
+        status: 'WAITING',
+        entryFee: numericEntryFee,
+        timeControl: numericTimeControl,
+        $and: [
+          {
+            $or: [
+              { whitePlayerId: null },
+              { blackPlayerId: null }
+            ]
+          },
+          { whitePlayerId: { $ne: userObjId } },
+          { blackPlayerId: { $ne: userObjId } }
+        ]
+      });
+      console.log('[MATCHMAKE] Existing match search result:', existingMatch ? existingMatch._id : 'none');
+    } catch (queryErr: any) {
+      console.error('[MATCHMAKE] Error searching for existing match:', queryErr.message);
+      // Continue to create a new match if query fails
+    }
 
     if (existingMatch) {
-      const session = isTransactionSupported ? await mongoose.startSession() : null;
-      if (session) {
-        session.startTransaction();
-      }
-
+      // Join the existing match
       try {
-        if (entryFee > 0) {
+        if (numericEntryFee > 0) {
           const playerWallet = await Wallet.findOneAndUpdate(
-            { userId, balance: { $gte: entryFee } },
-            { $inc: { balance: -entryFee, lockedBalance: entryFee } },
-            { new: true, ...(session ? { session } : {}) }
+            { userId: userObjId, balance: { $gte: numericEntryFee } },
+            { $inc: { balance: -numericEntryFee, lockedBalance: numericEntryFee } },
+            { new: true }
           );
 
           if (!playerWallet) {
+            console.log('[MATCHMAKE] Insufficient balance for join:', userId);
             res.status(400).json({ success: false, error: 'Insufficient wallet balance.' });
-            if (session) {
-              await session.abortTransaction();
-              session.endSession();
-            }
             return;
           }
 
           await new Transaction({
-            userId,
-            amount: -entryFee,
+            userId: userObjId,
+            amount: -numericEntryFee,
             type: 'MATCH_ENTRY',
             status: 'SUCCESS',
             description: `Entry Fee to join matchmaking match.`,
-          }).save(session ? { session } : {});
+          }).save();
         }
 
         if (!existingMatch.whitePlayerId) {
-          existingMatch.whitePlayerId = new mongoose.Types.ObjectId(userId);
+          existingMatch.whitePlayerId = userObjId;
           existingMatch.whiteUsername = player.username;
         } else {
-          existingMatch.blackPlayerId = new mongoose.Types.ObjectId(userId);
+          existingMatch.blackPlayerId = userObjId;
           existingMatch.blackUsername = player.username;
         }
 
         existingMatch.status = 'RUNNING';
-        await existingMatch.save(session ? { session } : {});
+        await existingMatch.save();
 
-        if (session) {
-          await session.commitTransaction();
-          session.endSession();
-        }
+        console.log('[MATCHMAKE] Joined existing match:', existingMatch._id);
 
         const io = getIoInstance();
         if (io) {
@@ -359,80 +318,63 @@ router.post('/matchmake', authMiddleware, async (req: AuthRequest, res: Response
           match: existingMatch,
         });
         return;
-      } catch (txError) {
-        if (session) {
-          await session.abortTransaction();
-          session.endSession();
-        }
-        throw txError;
+      } catch (joinErr: any) {
+        console.error('[MATCHMAKE] Error joining existing match:', joinErr.message, joinErr.stack);
+        // Fall through to create a new match instead
       }
     }
 
     // 2. No matching match found -> Create a new WAITING match
-    const session = isTransactionSupported ? await mongoose.startSession() : null;
-    if (session) {
-      session.startTransaction();
-    }
-
     try {
-      if (entryFee > 0) {
+      if (numericEntryFee > 0) {
         const hostWallet = await Wallet.findOneAndUpdate(
-          { userId, balance: { $gte: entryFee } },
-          { $inc: { balance: -entryFee, lockedBalance: entryFee } },
-          { new: true, ...(session ? { session } : {}) }
+          { userId: userObjId, balance: { $gte: numericEntryFee } },
+          { $inc: { balance: -numericEntryFee, lockedBalance: numericEntryFee } },
+          { new: true }
         );
 
         if (!hostWallet) {
+          console.log('[MATCHMAKE] Insufficient balance for host:', userId);
           res.status(400).json({ success: false, error: 'Insufficient wallet balance.' });
-          if (session) {
-            await session.abortTransaction();
-            session.endSession();
-          }
           return;
         }
 
         await new Transaction({
-          userId,
-          amount: -entryFee,
+          userId: userObjId,
+          amount: -numericEntryFee,
           type: 'MATCH_ENTRY',
           status: 'SUCCESS',
           description: `Entry Fee for hosting matchmaking match.`,
-        }).save(session ? { session } : {});
+        }).save();
       }
 
       const isWhite = Math.random() > 0.5;
 
       const newMatch = new Match({
-        whitePlayerId: isWhite ? userId : undefined,
-        blackPlayerId: isWhite ? undefined : userId,
-        whiteUsername: isWhite ? player.username : undefined,
+        whitePlayerId: isWhite ? userObjId : null,
+        blackPlayerId: isWhite ? null : userObjId,
+        whiteUsername: isWhite ? player.username : null,
         blackUsername: isWhite ? undefined : player.username,
-        entryFee,
-        prizePool: entryFee * 2.0, // winner gets double
-        timeControl,
+        entryFee: numericEntryFee,
+        prizePool: numericEntryFee * 2.0,
+        timeControl: numericTimeControl,
         status: 'WAITING',
       });
-      await newMatch.save(session ? { session } : {});
+      await newMatch.save();
 
-      if (session) {
-        await session.commitTransaction();
-        session.endSession();
-      }
+      console.log('[MATCHMAKE] Created new match:', newMatch._id);
 
       res.status(201).json({
         success: true,
         match: newMatch,
       });
-    } catch (txError) {
-      if (session) {
-        await session.abortTransaction();
-        session.endSession();
-      }
-      throw txError;
+    } catch (createErr: any) {
+      console.error('[MATCHMAKE] Error creating new match:', createErr.message, createErr.stack);
+      res.status(500).json({ success: false, error: 'Failed to create match: ' + createErr.message });
     }
-  } catch (error) {
-    console.error('Matchmaking error:', error);
-    res.status(500).json({ success: false, error: 'Server error during matchmaking.' });
+  } catch (error: any) {
+    console.error('[MATCHMAKE] Unhandled error:', error.message, error.stack);
+    res.status(500).json({ success: false, error: 'Server error during matchmaking: ' + error.message });
   }
 });
 
@@ -459,27 +401,30 @@ router.post('/force-bot-join', authMiddleware, async (req: AuthRequest, res: Res
     }
 
     const bot = bots[Math.floor(Math.random() * bots.length)];
-
-    const session = isTransactionSupported ? await mongoose.startSession() : null;
-    if (session) {
-      session.startTransaction();
-    }
+    console.log('[FORCE-BOT-JOIN] Bot selected:', bot.username, 'for match:', matchId);
 
     try {
       if (match.entryFee > 0) {
         const botWallet = await Wallet.findOneAndUpdate(
           { userId: bot._id, balance: { $gte: match.entryFee } },
           { $inc: { balance: -match.entryFee, lockedBalance: match.entryFee } },
-          { new: true, ...(session ? { session } : {}) }
+          { new: true }
         );
 
         if (!botWallet) {
-          res.status(400).json({ success: false, error: 'Bot wallet balance insufficient.' });
-          if (session) {
-            await session.abortTransaction();
-            session.endSession();
-          }
-          return;
+          // If bot has no wallet or insufficient balance, create/top-up wallet and proceed
+          console.log('[FORCE-BOT-JOIN] Bot wallet insufficient, ensuring wallet exists with funds');
+          await Wallet.findOneAndUpdate(
+            { userId: bot._id },
+            { $inc: { balance: 100000 } },
+            { upsert: true, new: true }
+          );
+          // Retry the deduction
+          await Wallet.findOneAndUpdate(
+            { userId: bot._id, balance: { $gte: match.entryFee } },
+            { $inc: { balance: -match.entryFee, lockedBalance: match.entryFee } },
+            { new: true }
+          );
         }
 
         await new Transaction({
@@ -488,7 +433,7 @@ router.post('/force-bot-join', authMiddleware, async (req: AuthRequest, res: Res
           type: 'MATCH_ENTRY',
           status: 'SUCCESS',
           description: `Entry Fee to join matchmaking match (Bot Player).`,
-        }).save(session ? { session } : {});
+        }).save();
       }
 
       if (!match.whitePlayerId) {
@@ -500,12 +445,9 @@ router.post('/force-bot-join', authMiddleware, async (req: AuthRequest, res: Res
       }
 
       match.status = 'RUNNING';
-      await match.save(session ? { session } : {});
+      await match.save();
 
-      if (session) {
-        await session.commitTransaction();
-        session.endSession();
-      }
+      console.log('[FORCE-BOT-JOIN] Bot joined match successfully:', match._id);
 
       const io = getIoInstance();
       if (io) {
@@ -517,15 +459,12 @@ router.post('/force-bot-join', authMiddleware, async (req: AuthRequest, res: Res
         success: true,
         match,
       });
-    } catch (txError) {
-      if (session) {
-        await session.abortTransaction();
-        session.endSession();
-      }
-      throw txError;
+    } catch (joinErr: any) {
+      console.error('[FORCE-BOT-JOIN] Error:', joinErr.message, joinErr.stack);
+      res.status(500).json({ success: false, error: 'Error joining bot: ' + joinErr.message });
     }
-  } catch (error) {
-    console.error('Force bot join error:', error);
+  } catch (error: any) {
+    console.error('[FORCE-BOT-JOIN] Unhandled error:', error.message, error.stack);
     res.status(500).json({ success: false, error: 'Server error forcing bot join.' });
   }
 });
@@ -552,50 +491,33 @@ router.post('/cancel-matchmake', authMiddleware, async (req: AuthRequest, res: R
       return;
     }
 
-    const session = isTransactionSupported ? await mongoose.startSession() : null;
-    if (session) {
-      session.startTransaction();
+    match.status = 'ABORTED';
+    await match.save();
+
+    if (match.entryFee > 0) {
+      await Wallet.findOneAndUpdate(
+        { userId },
+        { $inc: { balance: match.entryFee, lockedBalance: -match.entryFee } }
+      );
+
+      await new Transaction({
+        userId,
+        amount: match.entryFee,
+        type: 'MATCH_WIN',
+        status: 'SUCCESS',
+        description: `Refund for cancelled matchmaking match.`,
+        referenceId: match._id.toString(),
+      }).save();
     }
 
-    try {
-      match.status = 'ABORTED';
-      await match.save(session ? { session } : {});
+    console.log('[CANCEL-MATCHMAKE] Cancelled match:', matchId);
 
-      if (match.entryFee > 0) {
-        await Wallet.findOneAndUpdate(
-          { userId },
-          { $inc: { balance: match.entryFee, lockedBalance: -match.entryFee } },
-          session ? { session } : {}
-        );
-
-        await new Transaction({
-          userId,
-          amount: match.entryFee,
-          type: 'MATCH_WIN',
-          status: 'SUCCESS',
-          description: `Refund for cancelled matchmaking match.`,
-          referenceId: match._id.toString(),
-        }).save(session ? { session } : {});
-      }
-
-      if (session) {
-        await session.commitTransaction();
-        session.endSession();
-      }
-
-      res.status(200).json({
-        success: true,
-        message: 'Matchmaking search cancelled, entry fee refunded.',
-      });
-    } catch (txError) {
-      if (session) {
-        await session.abortTransaction();
-        session.endSession();
-      }
-      throw txError;
-    }
-  } catch (error) {
-    console.error('Cancel matchmaking error:', error);
+    res.status(200).json({
+      success: true,
+      message: 'Matchmaking search cancelled, entry fee refunded.',
+    });
+  } catch (error: any) {
+    console.error('[CANCEL-MATCHMAKE] Error:', error.message, error.stack);
     res.status(500).json({ success: false, error: 'Server error cancelling matchmaking.' });
   }
 });
