@@ -12,6 +12,58 @@ import { isTransactionSupported } from '../config/db';
 
 // Map of active timers for running games
 const gameTimers: { [matchId: string]: NodeJS.Timeout } = {};
+const forfeitTimers: { [matchId_userId: string]: NodeJS.Timeout } = {};
+
+const triggerForfeitTimeout = async (userId: string, io: Server) => {
+  try {
+    const activeMatches = await Match.find({
+      status: 'RUNNING',
+      $or: [
+        { whitePlayerId: new mongoose.Types.ObjectId(userId) },
+        { blackPlayerId: new mongoose.Types.ObjectId(userId) }
+      ]
+    });
+
+    for (const match of activeMatches) {
+      const matchId = match._id.toString();
+      const key = `${matchId}_${userId}`;
+      if (forfeitTimers[key]) clearTimeout(forfeitTimers[key]);
+
+      console.log(`User ${userId} disconnected. Starting 30s forfeit timer for match ${matchId}`);
+      forfeitTimers[key] = setTimeout(async () => {
+        try {
+          const freshMatch = await Match.findById(matchId);
+          if (!freshMatch || freshMatch.status !== 'RUNNING') return;
+
+          // Double check connection
+          const isUserConnected = activeConnections[userId] && activeConnections[userId].length > 0;
+          if (isUserConnected) {
+            console.log(`Forfeit aborted for match ${matchId}: user ${userId} reconnected to socket.`);
+            return;
+          }
+
+          console.log(`Match ${matchId} forfeit: user ${userId} did not reconnect within 30s.`);
+          const isWhite = freshMatch.whitePlayerId?.toString() === userId;
+          const winnerId = isWhite ? freshMatch.blackPlayerId?.toString() : freshMatch.whitePlayerId?.toString();
+          const result = isWhite ? 'BLACK_WIN' : 'WHITE_WIN';
+
+          if (gameTimers[matchId]) {
+            clearTimeout(gameTimers[matchId]);
+            delete gameTimers[matchId];
+          }
+
+          await concludeMatch(freshMatch, result, winnerId, io);
+        } catch (err) {
+          console.error('Error executing forfeit timeout:', err);
+        } finally {
+          delete forfeitTimers[key];
+        }
+      }, 30000);
+    }
+  } catch (error) {
+    console.error('Error in triggerForfeitTimeout:', error);
+  }
+};
 
 // Map to track connected users: userId -> Socket IDs
 const activeConnections: { [userId: string]: string[] } = {};
@@ -50,11 +102,24 @@ export const setupGameSocket = (io: Server) => {
       socket.join(matchId);
       console.log(`Socket ${socket.id} joined match room ${matchId}`);
       
+      // Clear any active forfeit timer for this user in this match
+      const key = `${matchId}_${userId}`;
+      if (forfeitTimers[key]) {
+        console.log(`User ${userId} rejoined match room ${matchId}. Clearing forfeit timer.`);
+        clearTimeout(forfeitTimers[key]);
+        delete forfeitTimers[key];
+      }
+      
       // Send current state
       try {
         const match = await Match.findById(matchId);
         if (match) {
           socket.emit('match_state', match);
+          // Set up the clock timeout if the match is running and no timer is running
+          if (match.status === 'RUNNING' && !gameTimers[matchId]) {
+            console.log(`Clock timeout was not running for match ${matchId}. Initializing now.`);
+            setupClockTimeout(matchId, match, io);
+          }
           triggerBotMoveIfActive(matchId, io);
         }
       } catch (err) {
@@ -170,29 +235,78 @@ export const setupGameSocket = (io: Server) => {
         activeConnections[userId] = activeConnections[userId].filter((id) => id !== socket.id);
         if (activeConnections[userId].length === 0) {
           delete activeConnections[userId];
+          // Start forfeit timer!
+          triggerForfeitTimeout(userId, io);
         }
       }
     });
   });
 };
 
+// Helper to compute remaining seconds for each player based on move history timestamps
+const calculateRemainingTimes = (match: IMatch) => {
+  const matchStart = new Date(match.createdAt).getTime();
+  let whiteElapsed = 0;
+  let blackElapsed = 0;
+
+  const history = match.moveHistory;
+  for (let i = 0; i < history.length; i++) {
+    const moveTime = new Date(history[i].createdAt).getTime();
+    const startTime = i === 0 ? matchStart : new Date(history[i - 1].createdAt).getTime();
+    const diffMs = moveTime - startTime;
+
+    if (i % 2 === 0) {
+      whiteElapsed += diffMs;
+    } else {
+      blackElapsed += diffMs;
+    }
+  }
+
+  // Current turn elapsed time (if running)
+  if (match.status === 'RUNNING') {
+    const now = Date.now();
+    const lastMoveTime = history.length > 0 ? new Date(history[history.length - 1].createdAt).getTime() : matchStart;
+    const currentDiffMs = now - lastMoveTime;
+
+    if (history.length % 2 === 0) {
+      whiteElapsed += currentDiffMs;
+    } else {
+      blackElapsed += currentDiffMs;
+    }
+  }
+
+  const whiteRemainingSec = Math.max(0, match.timeControl - Math.floor(whiteElapsed / 1000));
+  const blackRemainingSec = Math.max(0, match.timeControl - Math.floor(blackElapsed / 1000));
+
+  return { whiteRemainingSec, blackRemainingSec };
+};
+
 // Start timeout timer for active player (authoritative server clock flag fall)
 const setupClockTimeout = (matchId: string, match: IMatch, io: Server) => {
-  // Simple check: we just trigger flag fall after timeControl / sides
-  // For standard 10m chess without increments, we can set timeout for the remaining player time.
-  // In a production app, we would subtract elapsed time.
-  // We'll set a simple fallback: if no moves made in timeControl (e.g. 10 mins), opponent wins.
-  const timeoutMs = match.timeControl * 1000;
-  
+  // Get remaining times for both players
+  const { whiteRemainingSec, blackRemainingSec } = calculateRemainingTimes(match);
+
+  const chess = new Chess(match.boardFen);
+  const isWhiteTurn = chess.turn() === 'w';
+  const remainingSec = isWhiteTurn ? whiteRemainingSec : blackRemainingSec;
+  const timeoutMs = remainingSec * 1000;
+
+  console.log(`Setting clock timeout for match ${matchId}: ${isWhiteTurn ? 'White' : 'Black'} has ${remainingSec} seconds left.`);
+
+  // Cancel any existing timer for safety
+  if (gameTimers[matchId]) {
+    clearTimeout(gameTimers[matchId]);
+  }
+
   gameTimers[matchId] = setTimeout(async () => {
     try {
       const activeMatch = await Match.findById(matchId);
       if (!activeMatch || activeMatch.status !== 'RUNNING') return;
 
-      const chess = new Chess(activeMatch.boardFen);
-      const isWhiteTurn = chess.turn() === 'w';
-      const winnerId = isWhiteTurn ? activeMatch.blackPlayerId?.toString() : activeMatch.whitePlayerId?.toString();
-      const result = isWhiteTurn ? 'BLACK_WIN' : 'WHITE_WIN';
+      const currentChess = new Chess(activeMatch.boardFen);
+      const currentIsWhiteTurn = currentChess.turn() === 'w';
+      const winnerId = currentIsWhiteTurn ? activeMatch.blackPlayerId?.toString() : activeMatch.whitePlayerId?.toString();
+      const result = currentIsWhiteTurn ? 'BLACK_WIN' : 'WHITE_WIN';
 
       console.log(`Match ${matchId} timed out. Winner: ${winnerId}`);
       await concludeMatch(activeMatch, result, winnerId, io);
@@ -679,6 +793,9 @@ export const startBotScheduler = (io: Server) => {
 
           // Broadcast match state update
           io.to(freshMatch._id.toString()).emit('match_state', freshMatch);
+
+          // Setup timeout trigger for the first move
+          setupClockTimeout(freshMatch._id.toString(), freshMatch, io);
 
           // Trigger first move if it is the bot's turn!
           triggerBotMoveIfActive(freshMatch._id.toString(), io);

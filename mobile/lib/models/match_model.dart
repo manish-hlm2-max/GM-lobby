@@ -12,6 +12,7 @@ class MatchModel {
   final List<dynamic> moveHistory;
   final String? result;
   final String? winnerId;
+  final String? createdAt;
 
   MatchModel({
     required this.id,
@@ -27,6 +28,7 @@ class MatchModel {
     required this.moveHistory,
     this.result,
     this.winnerId,
+    this.createdAt,
   });
 
   factory MatchModel.fromJson(Map<String, dynamic> json) {
@@ -52,6 +54,7 @@ class MatchModel {
       moveHistory: json['moveHistory'] ?? [],
       result: json['result'],
       winnerId: json['winnerId'],
+      createdAt: json['createdAt']?.toString(),
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:chess/chess.dart' as ChessDart;
+import '../../models/match_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/game_provider.dart';
 
@@ -20,6 +21,10 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   int _whiteTime = 600;
   int _blackTime = 600;
   String _activeTurn = 'w';
+  
+  final ScrollController _opponentScrollController = ScrollController();
+  final ScrollController _playerScrollController = ScrollController();
+  int _lastMoveCount = -1;
 
   @override
   void initState() {
@@ -30,6 +35,10 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   @override
   void dispose() {
     _localTimer?.cancel();
+    _opponentScrollController.dispose();
+    _playerScrollController.dispose();
+    // Disconnect socket and clean up state when leaving screen
+    ref.read(gameProvider.notifier).leaveGame();
     super.dispose();
   }
 
@@ -48,6 +57,122 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         });
       }
     });
+  }
+
+  void _calculateRemainingTimes(MatchModel match) {
+    if (match.createdAt == null) return;
+
+    final matchStart = DateTime.parse(match.createdAt!).toUtc();
+    int whiteElapsedSeconds = 0;
+    int blackElapsedSeconds = 0;
+
+    final history = match.moveHistory;
+    final totalMoves = history.length;
+
+    for (int i = 0; i < totalMoves; i++) {
+      final move = history[i];
+      if (move is Map) {
+        final moveTimeStr = move['createdAt'];
+        if (moveTimeStr == null) continue;
+        final moveTime = DateTime.parse(moveTimeStr).toUtc();
+
+        DateTime startTime;
+        if (i == 0) {
+          startTime = matchStart;
+        } else {
+          final prevMove = history[i - 1];
+          final prevTimeStr = (prevMove is Map) ? prevMove['createdAt'] : null;
+          startTime = prevTimeStr != null
+              ? DateTime.parse(prevTimeStr).toUtc()
+              : matchStart;
+        }
+
+        final diff = moveTime.difference(startTime).inSeconds;
+        if (i % 2 == 0) {
+          // White move
+          whiteElapsedSeconds += diff;
+        } else {
+          // Black move
+          blackElapsedSeconds += diff;
+        }
+      }
+    }
+
+    // Now add elapsed time for the current ongoing turn
+    if (match.status == 'RUNNING') {
+      final now = DateTime.now().toUtc();
+      DateTime lastMoveTime = matchStart;
+      if (totalMoves > 0) {
+        final lastMove = history[totalMoves - 1];
+        final lastTimeStr = (lastMove is Map) ? lastMove['createdAt'] : null;
+        if (lastTimeStr != null) {
+          lastMoveTime = DateTime.parse(lastTimeStr).toUtc();
+        }
+      }
+
+      final currentElapsed = now.difference(lastMoveTime).inSeconds;
+      if (totalMoves % 2 == 0) {
+        // It's White's turn
+        whiteElapsedSeconds += currentElapsed;
+      } else {
+        // It's Black's turn
+        blackElapsedSeconds += currentElapsed;
+      }
+    }
+
+    setState(() {
+      _whiteTime = (match.timeControl - whiteElapsedSeconds).clamp(0, match.timeControl);
+      _blackTime = (match.timeControl - blackElapsedSeconds).clamp(0, match.timeControl);
+      _lastMoveCount = totalMoves;
+    });
+  }
+
+  Widget _buildMovesRow(List<String> moves, {required bool isPlayer}) {
+    if (moves.isEmpty) {
+      return Container(
+        height: 36,
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Text(
+          'No moves played yet',
+          style: GoogleFonts.inter(color: Colors.white30, fontSize: 12, fontStyle: FontStyle.italic),
+        ),
+      );
+    }
+
+    return Container(
+      height: 36,
+      color: const Color(0xFF16213E).withOpacity(0.3),
+      child: ListView.builder(
+        controller: isPlayer ? _playerScrollController : _opponentScrollController,
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        itemCount: moves.length,
+        itemBuilder: (context, index) {
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+            decoration: BoxDecoration(
+              color: isPlayer ? Colors.teal.withOpacity(0.15) : Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isPlayer ? Colors.teal.withOpacity(0.4) : Colors.white12,
+                width: 1,
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              moves[index],
+              style: GoogleFonts.inter(
+                color: isPlayer ? const Color(0xFF4ADE80) : Colors.white70,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   String _formatTime(int seconds) {
@@ -150,10 +275,44 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     final isWhitePlayer = match.whitePlayerId == authState.user?.id;
     final chess = ChessDart.Chess.fromFEN(match.boardFen);
 
-    // Initial clock setup from timeControl
-    if (_whiteTime == 600 && _blackTime == 600) {
-      _whiteTime = match.timeControl;
-      _blackTime = match.timeControl;
+    if (_lastMoveCount != match.moveHistory.length) {
+      _lastMoveCount = match.moveHistory.length;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _calculateRemainingTimes(match);
+        if (_opponentScrollController.hasClients) {
+          _opponentScrollController.jumpTo(_opponentScrollController.position.maxScrollExtent);
+        }
+        if (_playerScrollController.hasClients) {
+          _playerScrollController.jumpTo(_playerScrollController.position.maxScrollExtent);
+        }
+      });
+    }
+
+    final history = match.moveHistory;
+    final List<String> opponentMoves = [];
+    final List<String> playerMoves = [];
+
+    for (int i = 0; i < history.length; i++) {
+      final move = history[i];
+      if (move is Map) {
+        final san = move['san'] as String? ?? '';
+        final moveNum = (i ~/ 2) + 1;
+        final isWhiteMove = i % 2 == 0;
+        
+        if (isWhitePlayer) {
+          if (isWhiteMove) {
+            playerMoves.add('$moveNum. $san');
+          } else {
+            opponentMoves.add('$moveNum... $san');
+          }
+        } else {
+          if (isWhiteMove) {
+            opponentMoves.add('$moveNum. $san');
+          } else {
+            playerMoves.add('$moveNum... $san');
+          }
+        }
+      }
     }
 
     final opponentName = isWhitePlayer ? (match.blackUsername ?? 'Waiting...') : (match.whiteUsername ?? 'Waiting...');
@@ -272,6 +431,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
               ],
             ),
           ),
+
+          // Opponent moves row
+          _buildMovesRow(opponentMoves, isPlayer: false),
 
           // Chess Board - expanded to fill available space
           Expanded(
@@ -484,6 +646,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
               ],
             ),
           ),
+
+          // Player moves row
+          _buildMovesRow(playerMoves, isPlayer: true),
 
           // Game result banner
           if (match.status == 'COMPLETED')
