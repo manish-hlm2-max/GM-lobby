@@ -61,9 +61,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<bool> register(String email, String username, String password) async {
+  Future<bool> register(String email, String username, String password, String phoneNumber) async {
     state = state.copyWith(isLoading: true, error: null);
-    final res = await _authService.register(email, username, password);
+    final res = await _authService.register(email, username, password, phoneNumber);
     if (res['success'] == true) {
       await checkAuth();
       return true;
@@ -75,6 +75,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<Map<String, dynamic>> checkUsernameAvailability(String username) async {
     return await _authService.checkUsername(username);
+  }
+
+  Future<Map<String, dynamic>> changePassword(String oldPassword, String newPassword, String confirmNewPassword) async {
+    return await _authService.changePassword(oldPassword, newPassword, confirmNewPassword);
   }
 
   Future<void> logout() async {

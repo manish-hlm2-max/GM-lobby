@@ -82,6 +82,21 @@ class ProfileScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 36),
 
+            // Change Password Button
+            ElevatedButton.icon(
+              onPressed: () {
+                _showChangePasswordDialog(context, ref);
+              },
+              icon: const Icon(Icons.lock_outline, color: Colors.white),
+              label: const Text('Change Password', style: TextStyle(color: Colors.white)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal[600],
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+            ),
+            const SizedBox(height: 16),
+
             // Log Out Button
             ElevatedButton.icon(
               onPressed: () {
@@ -138,6 +153,148 @@ class ProfileScreen extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+
+  InputDecoration _inputDecoration(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(color: Colors.white54, fontSize: 13),
+      prefixIcon: Icon(icon, color: Colors.white38),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      filled: true,
+      fillColor: Colors.white.withOpacity(0.02),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.white.withOpacity(0.05)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.teal),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.redAccent),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.redAccent),
+      ),
+    );
+  }
+
+  void _showChangePasswordDialog(BuildContext context, WidgetRef ref) {
+    final formKey = GlobalKey<FormState>();
+    final oldPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    bool isLoading = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF0F172A),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Text(
+                'Change Password',
+                style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              content: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: oldPasswordController,
+                        style: const TextStyle(color: Colors.white),
+                        obscureText: true,
+                        decoration: _inputDecoration('Old Password', Icons.lock_open_outlined),
+                        validator: (val) => val == null || val.isEmpty ? 'Enter old password' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: newPasswordController,
+                        style: const TextStyle(color: Colors.white),
+                        obscureText: true,
+                        decoration: _inputDecoration('New Password', Icons.lock_outline),
+                        validator: (val) {
+                          if (val == null || val.length < 6) {
+                            return 'Password must be at least 6 characters';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: confirmPasswordController,
+                        style: const TextStyle(color: Colors.white),
+                        obscureText: true,
+                        decoration: _inputDecoration('Confirm Password', Icons.lock_outline),
+                        validator: (val) {
+                          if (val != newPasswordController.text) {
+                            return 'Passwords do not match';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isLoading ? null : () => Navigator.of(context).pop(),
+                  child: Text('Cancel', style: TextStyle(color: Colors.white60, fontFamily: GoogleFonts.inter().fontFamily)),
+                ),
+                ElevatedButton(
+                  onPressed: isLoading ? null : () async {
+                    if (!formKey.currentState!.validate()) return;
+                    setState(() {
+                      isLoading = true;
+                    });
+                    
+                    final res = await ref.read(authProvider.notifier).changePassword(
+                      oldPasswordController.text,
+                      newPasswordController.text,
+                      confirmPasswordController.text,
+                    );
+                    
+                    setState(() {
+                      isLoading = false;
+                    });
+
+                    if (context.mounted) {
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(res['success'] == true ? res['message'] ?? 'Password updated successfully!' : res['error'] ?? 'Update failed.'),
+                          backgroundColor: res['success'] == true ? Colors.teal : Colors.redAccent,
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal[500],
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: isLoading 
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : Text('Update', style: TextStyle(color: Colors.white, fontFamily: GoogleFonts.inter().fontFamily, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

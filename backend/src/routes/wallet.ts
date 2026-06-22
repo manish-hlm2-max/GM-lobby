@@ -373,6 +373,7 @@ router.get('/admin/users', authMiddleware, adminMiddleware, async (req: AuthRequ
         elo: user.elo,
         isBlocked: user.isBlocked || false,
         plainPassword: user.plainPassword || '',
+        phoneNumber: user.phoneNumber || '',
         balance: userWallet ? userWallet.balance : 0,
         lockedBalance: userWallet ? userWallet.lockedBalance : 0,
       };

@@ -62,7 +62,7 @@ class AuthService {
     }
   }
 
-  Future<Map<String, dynamic>> register(String email, String username, String password) async {
+  Future<Map<String, dynamic>> register(String email, String username, String password, String phoneNumber) async {
     try {
       final response = await http.post(
         Uri.parse(ApiConfig.register),
@@ -71,6 +71,7 @@ class AuthService {
           'email': email,
           'username': username,
           'password': password,
+          'phoneNumber': phoneNumber,
         }),
       ).timeout(const Duration(seconds: 10));
 
@@ -158,6 +159,51 @@ class AuthService {
       return null;
     } catch (e) {
       return null;
+    }
+  }
+
+  Future<Map<String, dynamic>> changePassword(String oldPassword, String newPassword, String confirmNewPassword) async {
+    try {
+      final token = await getToken();
+      if (token == null) {
+        return {'success': false, 'error': 'Authentication required. Log in again.'};
+      }
+
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/api/auth/change-password'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'oldPassword': oldPassword,
+          'newPassword': newPassword,
+          'confirmNewPassword': confirmNewPassword,
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Password updated successfully.',
+        };
+      }
+      return {
+        'success': false,
+        'error': data['error'] ?? 'Password update failed.',
+      };
+    } catch (e) {
+      String errMsg = e.toString();
+      if (errMsg.contains('TimeoutException')) {
+        errMsg = 'Connection timed out. The server is not responding.';
+      } else if (errMsg.contains('SocketException') || errMsg.contains('HandshakeException')) {
+        errMsg = 'Cannot reach server. Please check your internet connection.';
+      }
+      return {
+        'success': false,
+        'error': errMsg,
+      };
     }
   }
 }

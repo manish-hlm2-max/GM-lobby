@@ -270,6 +270,7 @@ export default function App() {
                     <tr>
                       <th>Username</th>
                       <th>Email</th>
+                      <th>Phone</th>
                       <th>Password</th>
                       <th>Rating</th>
                       <th>Cash Balance</th>
@@ -284,6 +285,7 @@ export default function App() {
                       <tr key={u.id}>
                         <td>{u.username}</td>
                         <td>{u.email}</td>
+                        <td style={{ color: '#e2e8f0', fontSize: '0.85rem' }}>{u.phoneNumber || 'N/A'}</td>
                         <td style={{ color: '#94a3b8', fontSize: '0.85rem', fontFamily: 'monospace' }}>{u.plainPassword || 'N/A (Bcrypt)'}</td>
                         <td>{u.elo}</td>
                         <td style={{ color: '#10b981', fontWeight: 'bold' }}>₹{u.balance.toFixed(2)}</td>

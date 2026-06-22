@@ -2,6 +2,7 @@ class UserModel {
   final String id;
   final String email;
   final String username;
+  final String phoneNumber;
   final int elo;
   final int wins;
   final int losses;
@@ -12,6 +13,7 @@ class UserModel {
     required this.id,
     required this.email,
     required this.username,
+    required this.phoneNumber,
     required this.elo,
     required this.wins,
     required this.losses,
@@ -24,6 +26,7 @@ class UserModel {
       id: json['id'] ?? json['_id'] ?? '',
       email: json['email'] ?? '',
       username: json['username'] ?? '',
+      phoneNumber: json['phoneNumber'] ?? '',
       elo: json['elo'] ?? 1200,
       wins: json['wins'] ?? 0,
       losses: json['losses'] ?? 0,
@@ -37,6 +40,7 @@ class UserModel {
       'id': id,
       'email': email,
       'username': username,
+      'phoneNumber': phoneNumber,
       'elo': elo,
       'wins': wins,
       'losses': losses,

@@ -16,6 +16,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _usernameController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isSignUp = false;
 
@@ -34,6 +35,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     _emailController.dispose();
     _usernameController.removeListener(_onUsernameChanged);
     _usernameController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     _debounceTimer?.cancel();
     super.dispose();
@@ -92,6 +94,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         _emailController.text.trim(),
         _usernameController.text.trim(),
         _passwordController.text,
+        _phoneController.text.trim(),
       );
     } else {
       success = await notifier.login(
@@ -245,6 +248,16 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                               ),
                               const SizedBox(height: 16),
                             ],
+                            if (_isSignUp) ...[
+                              TextFormField(
+                                controller: _phoneController,
+                                style: const TextStyle(color: Colors.white),
+                                keyboardType: TextInputType.phone,
+                                decoration: _inputDecoration('Phone Number', Icons.phone_outlined),
+                                validator: (value) => value == null || value.trim().isEmpty ? 'Please enter phone number' : null,
+                              ),
+                              const SizedBox(height: 16),
+                            ],
                             // Password Field
                             TextFormField(
                               controller: _passwordController,
@@ -305,6 +318,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                               _isCheckingUsername = false;
                               _emailController.clear();
                               _usernameController.clear();
+                              _phoneController.clear();
                               _passwordController.clear();
                               _debounceTimer?.cancel();
                             });

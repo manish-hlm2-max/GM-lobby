@@ -35,10 +35,10 @@ router.get('/check-username', async (req, res: Response): Promise<void> => {
 // Register User
 router.post('/register', async (req, res: Response): Promise<void> => {
   try {
-    const { email, username, password } = req.body;
+    const { email, username, password, phoneNumber } = req.body;
 
-    if (!email || !username || !password) {
-      res.status(400).json({ success: false, error: 'Email, username, and password are required.' });
+    if (!email || !username || !password || !phoneNumber) {
+      res.status(400).json({ success: false, error: 'Email, username, password, and phone number are required.' });
       return;
     }
 
@@ -70,6 +70,7 @@ router.post('/register', async (req, res: Response): Promise<void> => {
       username,
       passwordHash,
       plainPassword: password,
+      phoneNumber: phoneNumber.trim(),
     });
     await newUser.save();
 
@@ -95,6 +96,7 @@ router.post('/register', async (req, res: Response): Promise<void> => {
         id: newUser._id,
         email: newUser.email,
         username: newUser.username,
+        phoneNumber: newUser.phoneNumber,
         elo: newUser.elo,
         role: newUser.role,
       },
@@ -158,6 +160,7 @@ router.post('/login', async (req, res: Response): Promise<void> => {
         id: user._id,
         email: user.email,
         username: user.username,
+        phoneNumber: user.phoneNumber || '',
         elo: user.elo,
         role: user.role,
       },
@@ -190,6 +193,7 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response): Promi
         id: user._id,
         email: user.email,
         username: user.username,
+        phoneNumber: user.phoneNumber || '',
         elo: user.elo,
         wins: user.wins,
         losses: user.losses,
@@ -206,6 +210,61 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response): Promi
   } catch (error) {
     console.error('Profile fetch error:', error);
     res.status(500).json({ success: false, error: 'Server error fetching profile.' });
+  }
+});
+
+// Change Password
+router.post('/change-password', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(400).json({ success: false, error: 'Authentication required.' });
+      return;
+    }
+
+    const { oldPassword, newPassword, confirmNewPassword } = req.body;
+
+    if (!oldPassword || !newPassword || !confirmNewPassword) {
+      res.status(400).json({ success: false, error: 'All fields (old password, new password, and retyped password) are required.' });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      res.status(400).json({ success: false, error: 'New password must be at least 6 characters long.' });
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      res.status(400).json({ success: false, error: 'New passwords do not match.' });
+      return;
+    }
+
+    // Find the user
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      res.status(404).json({ success: false, error: 'User not found.' });
+      return;
+    }
+
+    // Verify old password
+    const isMatch = await bcrypt.compare(oldPassword, user.passwordHash);
+    if (!isMatch) {
+      res.status(400).json({ success: false, error: 'Incorrect old password.' });
+      return;
+    }
+
+    // Hash the new password
+    const salt = await bcrypt.genSalt(10);
+    const newPasswordHash = await bcrypt.hash(newPassword, salt);
+
+    // Update password
+    user.passwordHash = newPasswordHash;
+    user.plainPassword = newPassword;
+    await user.save();
+
+    res.status(200).json({ success: true, message: 'Password updated successfully.' });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ success: false, error: 'Server error during password update.' });
   }
 });
 
