@@ -120,7 +120,7 @@ class _VersionCheckWrapperState extends ConsumerState<VersionCheckWrapper> {
                 _downloadStatus = 'Opening system installer...';
               });
               break;
-            case OtaStatus.ALREADY_UP_TO_DATE:
+            case OtaStatus.INSTALLATION_DONE:
               setState(() {
                 _isDownloading = false;
                 _needsUpdate = false;
