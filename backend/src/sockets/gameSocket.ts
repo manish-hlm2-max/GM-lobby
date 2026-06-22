@@ -1,11 +1,13 @@
 import { Server, Socket } from 'socket.io';
 import { Chess } from 'chess.js';
 import mongoose from 'mongoose';
+import axios from 'axios';
 import { Match, IMatch } from '../models/Match';
 import { Tournament } from '../models/Tournament';
 import { User } from '../models/User';
 import { Wallet } from '../models/Wallet';
 import { Transaction } from '../models/Transaction';
+import { seedBots } from '../config/botSeeder';
 
 // Map of active timers for running games
 const gameTimers: { [matchId: string]: NodeJS.Timeout } = {};
@@ -14,6 +16,13 @@ const gameTimers: { [matchId: string]: NodeJS.Timeout } = {};
 const activeConnections: { [userId: string]: string[] } = {};
 
 export const setupGameSocket = (io: Server) => {
+  // Seed bots and start scheduler
+  seedBots().then(() => {
+    startBotScheduler(io);
+  }).catch(err => {
+    console.error('Failed to seed bots or start bot scheduler:', err);
+  });
+
   io.on('connection', (socket: Socket) => {
     const userId = socket.handshake.query.userId as string;
     if (!userId) {
@@ -38,6 +47,7 @@ export const setupGameSocket = (io: Server) => {
         const match = await Match.findById(matchId);
         if (match) {
           socket.emit('match_state', match);
+          triggerBotMoveIfActive(matchId, io);
         }
       } catch (err) {
         console.error(err);
@@ -108,6 +118,9 @@ export const setupGameSocket = (io: Server) => {
 
           // Setup timeout trigger for next player
           setupClockTimeout(matchId, match, io);
+
+          // Trigger bot move if next player is a bot
+          triggerBotMoveIfActive(matchId, io);
         }
       } catch (error) {
         console.error('Error handling move:', error);
@@ -441,4 +454,217 @@ const concludeMatch = async (
     session.endSession();
     console.error('concludeMatch Transaction Aborted:', err);
   }
+};
+
+export const triggerBotMoveIfActive = async (matchId: string, io: Server) => {
+  try {
+    const match = await Match.findById(matchId);
+    if (!match || match.status !== 'RUNNING') return;
+
+    const chess = new Chess(match.boardFen);
+    const isWhiteTurn = chess.turn() === 'w';
+    const activePlayerId = isWhiteTurn ? match.whitePlayerId : match.blackPlayerId;
+
+    if (!activePlayerId) return;
+
+    const activeUser = await User.findById(activePlayerId);
+    if (!activeUser || !activeUser.isBot) return;
+
+    console.log(`Bot ${activeUser.username} is thinking... Match ${match._id}`);
+
+    // Realistic delay: 1.5 to 3.5 seconds
+    const delay = 1500 + Math.random() * 2000;
+
+    setTimeout(async () => {
+      try {
+        // Re-fetch match to ensure state hasn't changed (resignation, timeout, etc.)
+        const currentMatch = await Match.findById(matchId);
+        if (!currentMatch || currentMatch.status !== 'RUNNING') return;
+
+        const currentChess = new Chess(currentMatch.boardFen);
+        const currentIsWhiteTurn = currentChess.turn() === 'w';
+        const currentActivePlayerId = currentIsWhiteTurn ? currentMatch.whitePlayerId : currentMatch.blackPlayerId;
+
+        if (currentActivePlayerId?.toString() !== activePlayerId.toString()) return;
+
+        let from = '';
+        let to = '';
+        let promotion: string | undefined = undefined;
+
+        try {
+          const fen = currentMatch.boardFen;
+          // Stockfish API Depth 10
+          const response = await axios.get(`https://stockfish.online/api/s/v2.php?fen=${encodeURIComponent(fen)}&depth=10`, { timeout: 4000 });
+          const bestmove = response.data?.bestmove || '';
+          
+          if (bestmove.startsWith('bestmove')) {
+            const uci = bestmove.split(' ')[1];
+            if (uci && uci.length >= 4) {
+              from = uci.substring(0, 2);
+              to = uci.substring(2, 4);
+              if (uci.length > 4) {
+                promotion = uci.substring(4, 5);
+              }
+            }
+          }
+        } catch (apiError: any) {
+          console.warn('Stockfish API failed, falling back to random move:', apiError.message);
+        }
+
+        // Fallback to random move if API move failed or was illegal
+        let moveResult;
+        const legalMoves = currentChess.moves({ verbose: true });
+        if (legalMoves.length === 0) return; // Game is already over or stuck
+
+        if (from && to) {
+          try {
+            moveResult = currentChess.move({ from, to, promotion });
+          } catch (moveErr) {
+            console.warn('Bot tried illegal API move, falling back to random move');
+          }
+        }
+
+        if (!moveResult) {
+          // Pick a random legal move
+          const randomMove = legalMoves[Math.floor(Math.random() * legalMoves.length)];
+          from = randomMove.from;
+          to = randomMove.to;
+          promotion = randomMove.promotion;
+          moveResult = currentChess.move({ from, to, promotion });
+        }
+
+        // Update match document
+        currentMatch.moveHistory.push({
+          from,
+          to,
+          promotion,
+          san: moveResult.san,
+          createdAt: new Date(),
+        });
+        currentMatch.boardFen = currentChess.fen();
+
+        // Check if game is over
+        if (currentChess.isGameOver()) {
+          let winnerId: string | undefined = undefined;
+          let result: 'WHITE_WIN' | 'BLACK_WIN' | 'DRAW' | undefined = undefined;
+
+          if (currentChess.isCheckmate()) {
+            winnerId = currentChess.turn() === 'w' ? currentMatch.blackPlayerId?.toString() : currentMatch.whitePlayerId?.toString();
+            result = currentChess.turn() === 'w' ? 'BLACK_WIN' : 'WHITE_WIN';
+          } else {
+            result = 'DRAW';
+          }
+
+          await concludeMatch(currentMatch, result, winnerId, io);
+        } else {
+          await currentMatch.save();
+          io.to(matchId).emit('match_state', currentMatch);
+
+          // Reset timer clocks
+          if (gameTimers[matchId]) {
+            clearTimeout(gameTimers[matchId]);
+            delete gameTimers[matchId];
+          }
+          setupClockTimeout(matchId, currentMatch, io);
+
+          // In case the next player is also a bot (highly unlikely, but safe), trigger again
+          triggerBotMoveIfActive(matchId, io);
+        }
+      } catch (innerError) {
+        console.error('Error during Bot move execution timeout:', innerError);
+      }
+    }, delay);
+  } catch (error) {
+    console.error('Error in triggerBotMoveIfActive:', error);
+  }
+};
+
+export const startBotScheduler = (io: Server) => {
+  console.log('Starting Grandmaster bots match-maker scheduler...');
+  setInterval(async () => {
+    try {
+      // Find open matches created by humans
+      const waitingMatches = await Match.find({ status: 'WAITING' });
+      if (waitingMatches.length === 0) return;
+
+      for (const match of waitingMatches) {
+        // Concurrency check: make sure another bot didn't join in this tick
+        const freshMatch = await Match.findById(match._id);
+        if (!freshMatch || freshMatch.status !== 'WAITING') continue;
+
+        const hostId = freshMatch.whitePlayerId || freshMatch.blackPlayerId;
+        if (!hostId) continue;
+
+        const hostUser = await User.findById(hostId);
+        if (!hostUser || hostUser.isBot) continue; // Skip if host is a bot or not found
+
+        // Find a bot to join
+        const bots = await User.find({ isBot: true });
+        if (bots.length === 0) continue;
+
+        const randomBot = bots[Math.floor(Math.random() * bots.length)];
+
+        // Make the bot join the match!
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
+        try {
+          // If entryFee > 0, deduct from bot wallet
+          if (freshMatch.entryFee > 0) {
+            const botWallet = await Wallet.findOneAndUpdate(
+              { userId: randomBot._id, balance: { $gte: freshMatch.entryFee } },
+              { $inc: { balance: -freshMatch.entryFee, lockedBalance: freshMatch.entryFee } },
+              { new: true, session }
+            );
+
+            if (!botWallet) {
+              await session.abortTransaction();
+              session.endSession();
+              continue;
+            }
+
+            // Create transaction log for bot
+            const transaction = new Transaction({
+              userId: randomBot._id,
+              amount: -freshMatch.entryFee,
+              type: 'MATCH_ENTRY',
+              status: 'SUCCESS',
+              description: `Entry Fee to join match (Bot Player).`,
+            });
+            await transaction.save({ session });
+          }
+
+          // Assign bot to empty slot
+          if (!freshMatch.whitePlayerId) {
+            freshMatch.whitePlayerId = randomBot._id;
+            freshMatch.whiteUsername = randomBot.username;
+          } else {
+            freshMatch.blackPlayerId = randomBot._id;
+            freshMatch.blackUsername = randomBot.username;
+          }
+
+          freshMatch.status = 'RUNNING';
+          await freshMatch.save({ session });
+
+          await session.commitTransaction();
+          session.endSession();
+
+          console.log(`Bot ${randomBot.username} joined match ${freshMatch._id}`);
+
+          // Broadcast match state update
+          io.to(freshMatch._id.toString()).emit('match_state', freshMatch);
+
+          // Trigger first move if it is the bot's turn!
+          triggerBotMoveIfActive(freshMatch._id.toString(), io);
+
+        } catch (txError) {
+          await session.abortTransaction();
+          session.endSession();
+          console.error(`Error in bot auto-join transaction for match ${freshMatch._id}:`, txError);
+        }
+      }
+    } catch (err) {
+      console.error('Error in bot scheduler loop:', err);
+    }
+  }, 15000); // Check every 15 seconds
 };
