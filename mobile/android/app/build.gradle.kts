@@ -8,6 +8,9 @@ fun incrementPubspecVersion() {
     }
 
     val lines = pubspecFile.readLines()
+    var currentVersionCode = 1
+    var currentVersionName = "1.0.0"
+
     val updatedLines = lines.map { line ->
         if (line.trim().startsWith("version:")) {
             val parts = line.split(":")
@@ -17,6 +20,8 @@ fun incrementPubspecVersion() {
                 if (versionParts.size == 2) {
                     val versionName = versionParts[0]
                     val versionCode = versionParts[1].toIntOrNull() ?: 1
+                    currentVersionCode = versionCode
+                    currentVersionName = versionName
                     val newVersionCode = versionCode + 1
                     println("Auto-incrementing app version: $versionStr -> $versionName+$newVersionCode")
                     "version: $versionName+$newVersionCode"
@@ -31,6 +36,18 @@ fun incrementPubspecVersion() {
         }
     }
     pubspecFile.writeText(updatedLines.joinToString("\n"))
+
+    // Write the actual compiled versionCode to the backend's version.json
+    val versionJsonFile = File(projectDir, "../../../backend/public/version.json")
+    if (versionJsonFile.exists()) {
+        println("Syncing compiled version code $currentVersionCode to backend version.json")
+        versionJsonFile.writeText("""{
+  "versionCode": $currentVersionCode,
+  "versionName": "$currentVersionName",
+  "isMandatory": true
+}
+""")
+    }
 }
 
 val runTasks = gradle.startParameter.taskNames
