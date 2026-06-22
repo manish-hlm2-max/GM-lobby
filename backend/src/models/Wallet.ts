@@ -14,9 +14,8 @@ const WalletSchema = new Schema<IWallet>({
   updatedAt: { type: Date, default: Date.now },
 });
 
-WalletSchema.pre<IWallet>('save', function (this: IWallet, next: any) {
+WalletSchema.pre<IWallet>('save', function (this: IWallet) {
   this.updatedAt = new Date();
-  next();
 });
 
 export const Wallet = model<IWallet>('Wallet', WalletSchema);
