@@ -51,9 +51,8 @@ const MatchSchema = new Schema<IMatch>({
   updatedAt: { type: Date, default: Date.now }
 });
 
-MatchSchema.pre<IMatch>('save', function (this: IMatch, next: any) {
+MatchSchema.pre<IMatch>('save', function (this: IMatch) {
   this.updatedAt = new Date();
-  next();
 });
 
 export const Match = model<IMatch>('Match', MatchSchema);
