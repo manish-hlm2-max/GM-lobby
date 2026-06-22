@@ -469,7 +469,7 @@ class _MatchmakingDialogContentState extends ConsumerState<MatchmakingDialogCont
   Timer? _timer;
   int _secondsLeft = 60;
   MatchModel? _match;
-  String _statusText = 'Initializing matchmaking...';
+  String _statusText = 'Finding your match...';
 
   @override
   void initState() {
@@ -499,7 +499,7 @@ class _MatchmakingDialogContentState extends ConsumerState<MatchmakingDialogCont
     // Call startMatchmaking API
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       setState(() {
-        _statusText = 'Searching for a real opponent...';
+        _statusText = 'Connecting to match server...';
       });
       final res = await ref.read(lobbyProvider.notifier).startMatchmaking(widget.entryFee, widget.timeControl);
       if (!mounted) return;
@@ -529,7 +529,7 @@ class _MatchmakingDialogContentState extends ConsumerState<MatchmakingDialogCont
   Future<void> _onTimeout() async {
     if (_match != null && _match!.status == 'WAITING') {
       setState(() {
-        _statusText = 'Opponent matched. Connecting to game...';
+        _statusText = 'Opponent found! Joining game...';
       });
       final botRes = await ref.read(lobbyProvider.notifier).forceBotJoin(_match!.id);
       if (mounted) {
@@ -623,7 +623,7 @@ class _MatchmakingDialogContentState extends ConsumerState<MatchmakingDialogCont
               ),
               const SizedBox(height: 28),
               Text(
-                '1vs1 Matchmaking',
+                'Finding Opponent',
                 style: GoogleFonts.outfit(
                   color: Colors.white,
                   fontSize: 20,
@@ -640,24 +640,16 @@ class _MatchmakingDialogContentState extends ConsumerState<MatchmakingDialogCont
                 ),
               ),
               const SizedBox(height: 12),
-              if (_secondsLeft > 30)
-                Text(
-                  'Searching for other players...',
-                  style: GoogleFonts.inter(
-                    color: Colors.teal[300],
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                )
-              else
-                Text(
-                  'Searching completed. Connecting to match...',
-                  style: GoogleFonts.inter(
-                    color: Colors.amber[300],
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
+              Text(
+                _secondsLeft > 30
+                    ? 'Please wait...'
+                    : 'Almost there...',
+                style: GoogleFonts.inter(
+                  color: _secondsLeft > 30 ? Colors.teal[300] : Colors.amber[300],
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
                 ),
+              ),
               const SizedBox(height: 28),
               SizedBox(
                 width: double.infinity,
