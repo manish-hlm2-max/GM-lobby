@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/wallet_provider.dart';
+import 'deposit_screen.dart';
 
 class WalletScreen extends ConsumerStatefulWidget {
   const WalletScreen({super.key});
@@ -202,7 +203,12 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () => _showTransactionSheet(true),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const DepositScreen()),
+                      );
+                    },
                     icon: const Icon(Icons.add_rounded, color: Colors.white),
                     label: const Text('Deposit', style: TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(

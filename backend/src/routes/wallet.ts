@@ -7,10 +7,10 @@ import { authMiddleware, adminMiddleware, AuthRequest } from '../middleware/auth
 
 const router = Router();
 
-// 1. Simulate Deposit
+// 1. Simulate Deposit / Request Manual Deposit
 router.post('/deposit', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { amount } = req.body;
+    const { amount, referenceId } = req.body;
     if (!amount || amount <= 0) {
       res.status(400).json({ success: false, error: 'Amount must be positive.' });
       return;
@@ -23,29 +23,43 @@ router.post('/deposit', authMiddleware, async (req: AuthRequest, res: Response):
     session.startTransaction();
 
     try {
+      const isManual = !!referenceId;
+
       // Create transaction log
       const transaction = new Transaction({
         userId,
         amount,
         type: 'DEPOSIT',
-        status: 'SUCCESS',
-        description: 'Deposited cash via mock gateway.',
+        status: isManual ? 'PENDING' : 'SUCCESS',
+        referenceId: referenceId || undefined,
+        description: isManual 
+          ? `Manual Deposit request via UPI. UTR: ${referenceId}` 
+          : 'Deposited cash via mock gateway.',
       });
       await transaction.save({ session });
 
-      // Atomically update wallet balance
-      const wallet = await Wallet.findOneAndUpdate(
-        { userId },
-        { $inc: { balance: amount } },
-        { new: true, upsert: true, session }
-      );
+      let currentBalance = 0;
+
+      if (!isManual) {
+        // Atomically update wallet balance for instant/legacy mode
+        const wallet = await Wallet.findOneAndUpdate(
+          { userId },
+          { $inc: { balance: amount } },
+          { new: true, upsert: true, session }
+        );
+        currentBalance = wallet.balance;
+      } else {
+        // For manual, do not credit balance until admin approval
+        const wallet = await Wallet.findOne({ userId }).session(session);
+        currentBalance = wallet ? wallet.balance : 0;
+      }
 
       await session.commitTransaction();
       session.endSession();
 
       res.status(200).json({
         success: true,
-        balance: wallet.balance,
+        balance: currentBalance,
         transaction,
       });
     } catch (txError) {
@@ -211,6 +225,64 @@ router.post('/admin/withdrawal/:action', authMiddleware, adminMiddleware, async 
     }
   } catch (error) {
     console.error('Admin withdrawal error:', error);
+    res.status(500).json({ success: false, error: 'Server error processing admin action.' });
+  }
+});
+
+// 4.5. Admin Administers Deposit (Approve / Reject)
+router.post('/admin/deposit/:action', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { action } = req.params;
+    const { transactionId } = req.body;
+
+    if (action !== 'approve' && action !== 'reject') {
+      res.status(400).json({ success: false, error: 'Invalid action. Must be approve or reject.' });
+      return;
+    }
+
+    const transaction = await Transaction.findById(transactionId);
+    if (!transaction || transaction.type !== 'DEPOSIT' || transaction.status !== 'PENDING') {
+      res.status(400).json({ success: false, error: 'Invalid or non-pending deposit transaction.' });
+      return;
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      if (action === 'approve') {
+        // Successful manual deposit -> credit wallet balance
+        const wallet = await Wallet.findOneAndUpdate(
+          { userId: transaction.userId },
+          { $inc: { balance: transaction.amount } },
+          { new: true, upsert: true, session }
+        );
+
+        transaction.status = 'SUCCESS';
+        transaction.description = 'Manual deposit approved and credited.';
+        await transaction.save({ session });
+
+      } else {
+        // Rejected manual deposit -> mark as FAILED
+        transaction.status = 'FAILED';
+        transaction.description = 'Manual deposit rejected by administrator.';
+        await transaction.save({ session });
+      }
+
+      await session.commitTransaction();
+      session.endSession();
+
+      res.status(200).json({
+        success: true,
+        transaction,
+      });
+    } catch (txError) {
+      await session.abortTransaction();
+      session.endSession();
+      throw txError;
+    }
+  } catch (error) {
+    console.error('Admin deposit verification error:', error);
     res.status(500).json({ success: false, error: 'Server error processing admin action.' });
   }
 });

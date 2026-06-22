@@ -7,7 +7,7 @@ import '../models/transaction_model.dart';
 class WalletService {
   final AuthService _authService = AuthService();
 
-  Future<Map<String, dynamic>> deposit(double amount) async {
+  Future<Map<String, dynamic>> deposit(double amount, {String? referenceId}) async {
     try {
       final token = await _authService.getToken();
       final response = await http.post(
@@ -16,7 +16,10 @@ class WalletService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: jsonEncode({'amount': amount}),
+        body: jsonEncode({
+          'amount': amount,
+          if (referenceId != null) 'referenceId': referenceId,
+        }),
       );
 
       final data = jsonDecode(response.body);
@@ -24,6 +27,7 @@ class WalletService {
         return {
           'success': true,
           'balance': (data['balance'] as num).toDouble(),
+          'status': data['transaction'] != null ? data['transaction']['status'] : 'SUCCESS',
         };
       }
       return {

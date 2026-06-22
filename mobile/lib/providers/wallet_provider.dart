@@ -40,15 +40,17 @@ class WalletNotifier extends StateNotifier<WalletState> {
     state = WalletState(transactions: history, isLoading: false);
   }
 
-  Future<bool> deposit(double amount) async {
+  Future<bool> deposit(double amount, {String? referenceId}) async {
     state = state.copyWith(isLoading: true, error: null);
-    final res = await _walletService.deposit(amount);
+    final res = await _walletService.deposit(amount, referenceId: referenceId);
     if (res['success'] == true) {
-      // Update balance in AuthProvider
-      final currentLocked = ref.read(authProvider).wallet?.lockedBalance ?? 0.0;
-      ref.read(authProvider.notifier).updateWallet(
-        WalletModel(balance: res['balance'], lockedBalance: currentLocked),
-      );
+      // Update balance in AuthProvider only if credited successfully (not PENDING verification)
+      if (res['status'] != 'PENDING') {
+        final currentLocked = ref.read(authProvider).wallet?.lockedBalance ?? 0.0;
+        ref.read(authProvider.notifier).updateWallet(
+          WalletModel(balance: res['balance'], lockedBalance: currentLocked),
+        );
+      }
       await loadHistory();
       return true;
     } else {

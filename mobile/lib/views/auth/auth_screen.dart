@@ -70,162 +70,186 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         ),
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Logo Icon
-                  Icon(
-                    Icons.emoji_events_rounded,
-                    size: 80,
-                    color: Colors.amber[400],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'GRANDMASTER LOBBY',
-                    style: GoogleFonts.outfit(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                  Text(
-                    'High Stakes Real-Time Chess',
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      color: Colors.white54,
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                  // Glassmorphic Input Card
-                  Container(
-                    padding: const EdgeInsets.all(24.0),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(24.0),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.1),
-                        width: 1,
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+            child: Align(
+              alignment: Alignment.center,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 400),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Logo Icon
+                      Center(
+                        child: Text(
+                          '♚',
+                          style: TextStyle(
+                            fontSize: 86,
+                            color: Colors.amber[400],
+                            height: 1.0,
+                          ),
+                        ),
                       ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          _isSignUp ? 'Create Account' : 'Log In',
-                          style: GoogleFonts.outfit(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                          textAlign: TextAlign.center,
+                      const SizedBox(height: 16),
+                      Text(
+                        'GRANDMASTER LOBBY',
+                        style: GoogleFonts.outfit(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: 2,
                         ),
-                        const SizedBox(height: 20),
-                        // Email Field
-                        TextFormField(
-                          controller: _emailController,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: _inputDecoration('Email Address', Icons.email_outlined),
-                          validator: (value) => value == null || value.isEmpty ? 'Please enter email' : null,
-                        ),
-                        const SizedBox(height: 16),
-                        // Username field (only visible for sign up)
-                        if (_isSignUp) ...[
-                          TextFormField(
-                            controller: _usernameController,
-                            style: const TextStyle(color: Colors.white),
-                            decoration: _inputDecoration('Username', Icons.person_outline),
-                            validator: (value) =>
-                                value == null || value.isEmpty ? 'Please enter username' : null,
-                          ),
-                          const SizedBox(height: 16),
-                        ],
-                        // Password Field
-                        TextFormField(
-                          controller: _passwordController,
-                          style: const TextStyle(color: Colors.white),
-                          obscureText: true,
-                          decoration: _inputDecoration('Password', Icons.lock_outline),
-                          validator: (value) => value == null || value.length < 6
-                              ? 'Password must be at least 6 characters'
-                              : null,
-                        ),
-                        if (state.error != null) ...[
-                          const SizedBox(height: 16),
-                          Text(
-                            state.error!,
-                            style: const TextStyle(color: Colors.redAccent, fontSize: 13),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                        const SizedBox(height: 24),
-                        // Submit Button
-                        ElevatedButton(
-                          onPressed: state.isLoading ? null : _submit,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.teal[400],
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedCornerShape(16),
-                            elevation: 5,
-                          ),
-                          child: state.isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Text(
-                                  _isSignUp ? 'SIGN UP' : 'LOG IN',
-                                  style: GoogleFonts.inter(
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 1.2,
-                                  ),
-                                ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  // Toggle state button
-                  TextButton(
-                    onPressed: () {
-                      setState(() {
-                        _isSignUp = !_isSignUp;
-                      });
-                    },
-                    child: Text(
-                      _isSignUp ? 'Already have an account? Log In' : "Don't have an account? Sign Up",
-                      style: GoogleFonts.inter(
-                        color: Colors.teal[300],
-                        fontWeight: FontWeight.w600,
+                        textAlign: TextAlign.center,
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  FutureBuilder<PackageInfo>(
-                    future: PackageInfo.fromPlatform(),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasData) {
-                        return Text(
-                          'Version ${snapshot.data!.version} (${snapshot.data!.buildNumber})',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: Colors.white30,
+                      const SizedBox(height: 6),
+                      Text(
+                        'High Stakes Real-Time Chess',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          color: Colors.white54,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 36),
+                      // Glassmorphic Input Card
+                      Container(
+                        padding: const EdgeInsets.all(24.0),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.04),
+                          borderRadius: BorderRadius.circular(24.0),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.08),
+                            width: 1.2,
                           ),
-                          textAlign: TextAlign.center,
-                        );
-                      }
-                      return const SizedBox();
-                    },
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.25),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              _isSignUp ? 'Create Account' : 'Log In',
+                              style: GoogleFonts.outfit(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 24),
+                            // Email Field
+                            TextFormField(
+                              controller: _emailController,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: _inputDecoration('Email Address', Icons.email_outlined),
+                              validator: (value) => value == null || value.isEmpty ? 'Please enter email' : null,
+                            ),
+                            const SizedBox(height: 16),
+                            // Username field (only visible for sign up)
+                            if (_isSignUp) ...[
+                              TextFormField(
+                                controller: _usernameController,
+                                style: const TextStyle(color: Colors.white),
+                                decoration: _inputDecoration('Username', Icons.person_outline),
+                                validator: (value) =>
+                                    value == null || value.isEmpty ? 'Please enter username' : null,
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+                            // Password Field
+                            TextFormField(
+                              controller: _passwordController,
+                              style: const TextStyle(color: Colors.white),
+                              obscureText: true,
+                              decoration: _inputDecoration('Password', Icons.lock_outline),
+                              validator: (value) => value == null || value.length < 6
+                                  ? 'Password must be at least 6 characters'
+                                  : null,
+                            ),
+                            if (state.error != null) ...[
+                              const SizedBox(height: 16),
+                              Text(
+                                state.error!,
+                                style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                            const SizedBox(height: 24),
+                            // Submit Button
+                            ElevatedButton(
+                              onPressed: state.isLoading ? null : _submit,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.teal[400],
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                elevation: 5,
+                              ),
+                              child: state.isLoading
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : Text(
+                                      _isSignUp ? 'SIGN UP' : 'LOG IN',
+                                      style: GoogleFonts.inter(
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 1.2,
+                                      ),
+                                    ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      // Toggle state button
+                      Center(
+                        child: TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _isSignUp = !_isSignUp;
+                            });
+                          },
+                          child: Text(
+                            _isSignUp ? 'Already have an account? Log In' : "Don't have an account? Sign Up",
+                            style: GoogleFonts.inter(
+                              color: Colors.teal[300],
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      FutureBuilder<PackageInfo>(
+                        future: PackageInfo.fromPlatform(),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasData) {
+                            return Text(
+                              'Version ${snapshot.data!.version} (${snapshot.data!.buildNumber})',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: Colors.white30,
+                              ),
+                              textAlign: TextAlign.center,
+                            );
+                          }
+                          return const SizedBox();
+                        },
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -237,8 +261,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   InputDecoration _inputDecoration(String label, IconData icon) {
     return InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(color: Colors.white54),
+      labelStyle: const TextStyle(color: Colors.white54, fontSize: 14),
       prefixIcon: Icon(icon, color: Colors.white38),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       filled: true,
       fillColor: Colors.white.withOpacity(0.03),
       enabledBorder: OutlineInputBorder(
