@@ -411,6 +411,7 @@ router.get('/admin/users', authMiddleware, adminMiddleware, async (req: AuthRequ
         role: user.role,
         elo: user.elo,
         isBlocked: user.isBlocked || false,
+        isBot: user.isBot || false,
         plainPassword: user.plainPassword || '',
         phoneNumber: user.phoneNumber || '',
         balance: userWallet ? userWallet.balance : 0,

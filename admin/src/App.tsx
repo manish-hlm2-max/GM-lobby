@@ -229,12 +229,16 @@ export default function App() {
           <div>
             <div className="stats-grid">
               <div className="stat-card">
-                <div className="stat-label">Total Users</div>
-                <div className="stat-value">{users.length}</div>
+                <div className="stat-label">Real Players</div>
+                <div className="stat-value">{users.filter(u => !u.isBot).length}</div>
               </div>
               <div className="stat-card">
-                <div className="stat-label">Active GMs</div>
-                <div className="stat-value">{users.filter(u => u.elo > 1500).length}</div>
+                <div className="stat-label">Grandmaster Bots</div>
+                <div className="stat-value">{users.filter(u => u.isBot).length}</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-label">Active GMs (Real)</div>
+                <div className="stat-value">{users.filter(u => !u.isBot && u.elo > 1500).length}</div>
               </div>
             </div>
 
@@ -242,10 +246,10 @@ export default function App() {
               <h3>Balance Override Utility</h3>
               <form onSubmit={handleOverride} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '16px', alignItems: 'end' }}>
                 <div>
-                  <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '4px' }}>Select Target User</label>
+                  <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '4px' }}>Select Target Player</label>
                   <select value={overrideUser} onChange={(e) => setOverrideUser(e.target.value)} required>
-                    <option value="">Choose User...</option>
-                    {users.map(u => (
+                    <option value="">Choose Player...</option>
+                    {users.filter(u => !u.isBot).map(u => (
                       <option key={u.id} value={u.id}>{u.username} (₹{u.balance.toFixed(2)})</option>
                     ))}
                   </select>
@@ -263,8 +267,8 @@ export default function App() {
             </div>
 
             <div className="card">
-              <h3>Users Directory</h3>
-              {loading ? <p>Loading Users...</p> : (
+              <h3>Real Players Directory</h3>
+              {loading ? <p>Loading Players...</p> : (
                 <table>
                   <thead>
                     <tr>
@@ -281,7 +285,7 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {users.map(u => (
+                    {users.filter(u => !u.isBot).map(u => (
                       <tr key={u.id}>
                         <td>{u.username}</td>
                         <td>{u.email}</td>
@@ -316,6 +320,54 @@ export default function App() {
                           ) : (
                             <span style={{ color: '#64748b', fontSize: '0.75rem' }}>Protected</span>
                           )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="card">
+              <h3>Grandmaster Bots Directory</h3>
+              {loading ? <p>Loading Bots...</p> : (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Bot Username</th>
+                      <th>Email</th>
+                      <th>Rating</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.filter(u => u.isBot).map(u => (
+                      <tr key={u.id}>
+                        <td style={{ fontWeight: 'bold', color: '#38bdf8' }}>{u.username}</td>
+                        <td>{u.email}</td>
+                        <td>{u.elo}</td>
+                        <td>
+                          <span className={`badge badge-${u.isBlocked ? 'failed' : 'success'}`}>
+                            {u.isBlocked ? 'Blocked' : 'Active'}
+                          </span>
+                        </td>
+                        <td>
+                          <button 
+                            onClick={() => handleBlockToggle(u.id, !u.isBlocked)}
+                            style={{ 
+                              backgroundColor: u.isBlocked ? '#10b981' : '#ef4444', 
+                              border: 'none', 
+                              padding: '6px 12px', 
+                              borderRadius: '6px', 
+                              color: '#fff', 
+                              cursor: 'pointer',
+                              fontSize: '0.75rem',
+                              fontWeight: 'bold'
+                            }}
+                          >
+                            {u.isBlocked ? 'Unblock' : 'Block'}
+                          </button>
                         </td>
                       </tr>
                     ))}
