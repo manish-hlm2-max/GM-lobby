@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../providers/auth_provider.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
@@ -206,6 +207,23 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
+                  ),
+                  const SizedBox(height: 16),
+                  FutureBuilder<PackageInfo>(
+                    future: PackageInfo.fromPlatform(),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasData) {
+                        return Text(
+                          'Version ${snapshot.data!.version} (${snapshot.data!.buildNumber})',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: Colors.white30,
+                          ),
+                          textAlign: TextAlign.center,
+                        );
+                      }
+                      return const SizedBox();
+                    },
                   ),
                 ],
               ),

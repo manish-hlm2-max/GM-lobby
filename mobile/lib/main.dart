@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'providers/auth_provider.dart';
 import 'views/auth/auth_screen.dart';
 import 'views/home/lobby_shell.dart';
+import 'views/version_check_wrapper.dart';
 
 void main() {
   runApp(
@@ -36,16 +37,18 @@ class ChessBettingApp extends ConsumerWidget {
           ThemeData.dark().textTheme,
         ),
       ),
-      home: authState.isLoading
-          ? const Scaffold(
-              backgroundColor: Color(0xFF030712),
-              body: Center(
-                child: CircularProgressIndicator(color: Colors.teal),
-              ),
-            )
-          : authState.user != null
-              ? const LobbyShell()
-              : const AuthScreen(),
+      home: VersionCheckWrapper(
+        child: authState.isLoading
+            ? const Scaffold(
+                backgroundColor: Color(0xFF030712),
+                body: Center(
+                  child: CircularProgressIndicator(color: Colors.teal),
+                ),
+              )
+            : authState.user != null
+                ? const LobbyShell()
+                : const AuthScreen(),
+      ),
     );
   }
 }

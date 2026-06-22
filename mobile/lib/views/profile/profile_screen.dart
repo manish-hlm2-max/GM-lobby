@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../providers/auth_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -93,6 +94,23 @@ class ProfileScreen extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
+            ),
+            const SizedBox(height: 24),
+            FutureBuilder<PackageInfo>(
+              future: PackageInfo.fromPlatform(),
+              builder: (context, snapshot) {
+                if (snapshot.hasData) {
+                  return Text(
+                    'Version ${snapshot.data!.version} (${snapshot.data!.buildNumber})',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: Colors.white30,
+                    ),
+                    textAlign: TextAlign.center,
+                  );
+                }
+                return const SizedBox();
+              },
             ),
           ],
         ),

@@ -1,0 +1,3 @@
+Mock APK data for testing OTA download.
+This is a placeholder for app-release.apk.
+In a real production environment, compile the Flutter project into a release APK and copy it here.

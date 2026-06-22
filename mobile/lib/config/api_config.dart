@@ -7,6 +7,7 @@ class ApiConfig {
   static const String register = '$baseUrl/api/auth/register';
   static const String login = '$baseUrl/api/auth/login';
   static const String me = '$baseUrl/api/auth/me';
+  static const String appVersion = '$baseUrl/api/app-version';
 
   // Wallet endpoints
   static const String deposit = '$baseUrl/api/wallet/deposit';

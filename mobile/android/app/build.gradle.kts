@@ -1,3 +1,52 @@
+import java.io.File
+
+fun incrementPubspecVersion() {
+    val pubspecFile = File(projectDir, "../../pubspec.yaml")
+    if (!pubspecFile.exists()) {
+        println("pubspec.yaml not found at ${pubspecFile.absolutePath}")
+        return
+    }
+
+    val lines = pubspecFile.readLines()
+    val updatedLines = lines.map { line ->
+        if (line.trim().startsWith("version:")) {
+            val parts = line.split(":")
+            if (parts.size == 2) {
+                val versionStr = parts[1].trim()
+                val versionParts = versionStr.split("+")
+                if (versionParts.size == 2) {
+                    val versionName = versionParts[0]
+                    val versionCode = versionParts[1].toIntOrNull() ?: 1
+                    val newVersionCode = versionCode + 1
+                    println("Auto-incrementing app version: $versionStr -> $versionName+$newVersionCode")
+                    "version: $versionName+$newVersionCode"
+                } else {
+                    line
+                }
+            } else {
+                line
+            }
+        } else {
+            line
+        }
+    }
+    pubspecFile.writeText(updatedLines.joinToString("\n"))
+}
+
+val runTasks = gradle.startParameter.taskNames
+val isBuildTask = runTasks.any { task ->
+    task.contains("assemble", ignoreCase = true) ||
+    task.contains("bundle", ignoreCase = true) ||
+    task.contains("build", ignoreCase = true)
+}
+if (isBuildTask) {
+    try {
+        incrementPubspecVersion()
+    } catch (e: Exception) {
+        println("Failed to auto-increment version: ${e.message}")
+    }
+}
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
