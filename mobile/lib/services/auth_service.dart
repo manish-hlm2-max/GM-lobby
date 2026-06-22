@@ -206,4 +206,78 @@ class AuthService {
       };
     }
   }
+
+  Future<List<UserModel>> searchUsers(String query) async {
+    try {
+      final token = await getToken();
+      final response = await http.get(
+        Uri.parse(ApiConfig.searchUsers(query)),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        final list = data['users'] as List;
+        return list.map((item) => UserModel.fromJson(item)).toList();
+      }
+      return [];
+    } catch (e) {
+      print('Error searching users: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> addFriend(String friendId) async {
+    try {
+      final token = await getToken();
+      final response = await http.post(
+        Uri.parse(ApiConfig.addFriend),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'friendId': friendId}),
+      ).timeout(const Duration(seconds: 10));
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Friend added.',
+        };
+      }
+      return {
+        'success': false,
+        'error': data['error'] ?? 'Failed to add friend.',
+      };
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  Future<List<UserModel>> getFriends() async {
+    try {
+      final token = await getToken();
+      final response = await http.get(
+        Uri.parse(ApiConfig.getFriends),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        final list = data['friends'] as List;
+        return list.map((item) => UserModel.fromJson(item)).toList();
+      }
+      return [];
+    } catch (e) {
+      print('Error getting friends: $e');
+      return [];
+    }
+  }
 }

@@ -227,4 +227,27 @@ class MatchService {
       return {'success': false, 'error': e.toString()};
     }
   }
+
+  Future<List<MatchModel>> getMatchHistory() async {
+    try {
+      final token = await _authService.getToken();
+      final response = await http.get(
+        Uri.parse(ApiConfig.matchHistory),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        final list = data['matches'] as List;
+        return list.map((item) => MatchModel.fromJson(item)).toList();
+      }
+      return [];
+    } catch (e) {
+      print('Error fetching match history: $e');
+      return [];
+    }
+  }
 }

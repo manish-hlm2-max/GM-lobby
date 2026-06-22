@@ -1,4 +1,4 @@
-import { Schema, model, Document } from 'mongoose';
+import { Schema, model, Document, Types } from 'mongoose';
 
 export interface IUser extends Document {
   email: string;
@@ -13,6 +13,7 @@ export interface IUser extends Document {
   losses: number;
   draws: number;
   role: 'USER' | 'MODERATOR' | 'SUPER_ADMIN';
+  friends: Types.ObjectId[];
   createdAt: Date;
 }
 
@@ -29,6 +30,7 @@ const UserSchema = new Schema<IUser>({
   losses: { type: Number, default: 0 },
   draws: { type: Number, default: 0 },
   role: { type: String, enum: ['USER', 'MODERATOR', 'SUPER_ADMIN'], default: 'USER' },
+  friends: { type: [Schema.Types.ObjectId], ref: 'User', default: [] },
   createdAt: { type: Date, default: Date.now },
 });
 

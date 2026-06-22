@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'home_screen.dart';
 import '../wallet/wallet_screen.dart';
 import '../tournament/tournament_screen.dart';
+import '../results/results_screen.dart';
 import '../profile/profile_screen.dart';
-import '../../providers/auth_provider.dart';
 
 class LobbyShell extends ConsumerStatefulWidget {
   const LobbyShell({super.key});
@@ -20,6 +20,7 @@ class _LobbyShellState extends ConsumerState<LobbyShell> {
     const HomeScreen(),
     const WalletScreen(),
     const TournamentScreen(),
+    const ResultsScreen(),
     const ProfileScreen(),
   ];
 
@@ -57,6 +58,10 @@ class _LobbyShellState extends ConsumerState<LobbyShell> {
           BottomNavigationBarItem(
             icon: Icon(Icons.emoji_events_rounded),
             label: 'Tournaments',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.history_rounded),
+            label: 'Results',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_rounded),

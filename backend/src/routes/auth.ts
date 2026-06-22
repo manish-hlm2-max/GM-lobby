@@ -268,4 +268,103 @@ router.post('/change-password', authMiddleware, async (req: AuthRequest, res: Re
   }
 });
 
+// Search Users by Username (excluding self and bots)
+router.get('/users/search', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { username } = req.query;
+    const currentUserId = req.user?.id;
+
+    if (!username || typeof username !== 'string') {
+      res.status(200).json({ success: true, users: [] });
+      return;
+    }
+
+    // Search users where username contains query (case-insensitive)
+    const users = await User.find({
+      _id: { $ne: currentUserId },
+      username: { $regex: new RegExp(username, 'i') },
+      isBot: false
+    }).select('_id username elo wins losses draws');
+
+    res.status(200).json({ success: true, users });
+  } catch (error) {
+    console.error('Search users error:', error);
+    res.status(500).json({ success: false, error: 'Server error searching users.' });
+  }
+});
+
+// Add User as Friend
+router.post('/friends/add', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { friendId } = req.body;
+    const currentUserId = req.user?.id;
+
+    if (!friendId) {
+      res.status(400).json({ success: false, error: 'Friend user ID is required.' });
+      return;
+    }
+
+    if (friendId === currentUserId) {
+      res.status(400).json({ success: false, error: 'You cannot add yourself as a friend.' });
+      return;
+    }
+
+    const friendUser = await User.findById(friendId);
+    if (!friendUser) {
+      res.status(404).json({ success: false, error: 'User to add not found.' });
+      return;
+    }
+
+    const currentUser = await User.findById(currentUserId);
+    if (!currentUser) {
+      res.status(404).json({ success: false, error: 'Current user not found.' });
+      return;
+    }
+
+    if (!currentUser.friends) {
+      currentUser.friends = [];
+    }
+
+    const isAlreadyFriend = currentUser.friends.some(
+      (id) => id.toString() === friendId
+    );
+
+    if (isAlreadyFriend) {
+      res.status(400).json({ success: false, error: 'User is already in your friends list.' });
+      return;
+    }
+
+    currentUser.friends.push(friendUser._id as any);
+    await currentUser.save();
+
+    res.status(200).json({
+      success: true,
+      message: `${friendUser.username} added to friends list.`,
+    });
+  } catch (error) {
+    console.error('Add friend error:', error);
+    res.status(500).json({ success: false, error: 'Server error adding friend.' });
+  }
+});
+
+// Get Friends List
+router.get('/friends', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const currentUserId = req.user?.id;
+    const user = await User.findById(currentUserId).populate('friends', '_id username elo wins losses draws');
+    if (!user) {
+      res.status(404).json({ success: false, error: 'User not found.' });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      friends: user.friends || [],
+    });
+  } catch (error) {
+    console.error('Fetch friends list error:', error);
+    res.status(500).json({ success: false, error: 'Server error fetching friends list.' });
+  }
+});
+
 export default router;

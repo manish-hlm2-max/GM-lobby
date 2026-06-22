@@ -2,13 +2,113 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/auth_service.dart';
 
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  final AuthService _authService = AuthService();
+  final TextEditingController _searchController = TextEditingController();
+  
+  List<UserModel>? _friends;
+  List<UserModel>? _searchResults;
+  bool _isLoadingFriends = true;
+  bool _isSearching = false;
+  String _lastSearchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFriends();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadFriends() async {
+    setState(() {
+      _isLoadingFriends = true;
+    });
+    try {
+      final list = await _authService.getFriends();
+      setState(() {
+        _friends = list;
+        _isLoadingFriends = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingFriends = false;
+      });
+    }
+  }
+
+  Future<void> _performSearch() async {
+    final query = _searchController.text.trim();
+    if (query.isEmpty) {
+      setState(() {
+        _searchResults = null;
+        _lastSearchQuery = '';
+      });
+      return;
+    }
+    setState(() {
+      _isSearching = true;
+      _lastSearchQuery = query;
+    });
+    try {
+      final results = await _authService.searchUsers(query);
+      setState(() {
+        _searchResults = results;
+        _isSearching = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isSearching = false;
+      });
+    }
+  }
+
+  Future<void> _addFriend(String friendId) async {
+    final res = await _authService.addFriend(friendId);
+    if (res['success'] == true) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(res['message'] ?? 'Friend added successfully!'),
+            backgroundColor: Colors.teal,
+          ),
+        );
+      }
+      _searchController.clear();
+      setState(() {
+        _searchResults = null;
+        _lastSearchQuery = '';
+      });
+      _loadFriends();
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(res['error'] ?? 'Failed to add friend.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final user = authState.user;
 
@@ -20,115 +120,340 @@ class ProfileScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFF030712),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 20),
-            // User Avatar Card
-            Center(
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 46,
-                    backgroundColor: Colors.teal[400],
-                    child: Text(
-                      user?.username.substring(0, 1).toUpperCase() ?? 'U',
-                      style: GoogleFonts.outfit(fontSize: 40, fontWeight: FontWeight.bold, color: Colors.white),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 20),
+              // User Avatar Card
+              Center(
+                child: Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 46,
+                      backgroundColor: Colors.teal[400],
+                      child: Text(
+                        user?.username.substring(0, 1).toUpperCase() ?? 'U',
+                        style: GoogleFonts.outfit(fontSize: 40, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    user?.username ?? 'Grandmaster',
-                    style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    user?.email ?? 'player@chess.com',
-                    style: GoogleFonts.inter(color: Colors.white38, fontSize: 13),
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    Text(
+                      user?.username ?? 'Grandmaster',
+                      style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      user?.email ?? 'player@chess.com',
+                      style: GoogleFonts.inter(color: Colors.white38, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 36),
+
+              // User stats box
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.02),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white.withOpacity(0.05)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Performance stats',
+                      style: GoogleFonts.outfit(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _statItem('Matches', '$totalGames'),
+                        _statItem('Wins', '$wins', color: Colors.green[400]),
+                        _statItem('Losses', '$losses', color: Colors.red[400]),
+                        _statItem('Winrate', '$winrate%', color: Colors.teal[300]),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 36),
+
+              // Friends Section
+              _buildFriendsSection(),
+              const SizedBox(height: 36),
+
+              // Change Password Button
+              ElevatedButton.icon(
+                onPressed: () {
+                  _showChangePasswordDialog(context, ref);
+                },
+                icon: const Icon(Icons.lock_outline, color: Colors.white),
+                label: const Text('Change Password', style: TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal[600],
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Log Out Button
+              ElevatedButton.icon(
+                onPressed: () {
+                  ref.read(authProvider.notifier).logout();
+                },
+                icon: const Icon(Icons.logout_rounded, color: Colors.white),
+                label: const Text('Log Out', style: TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red[400],
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+              ),
+              const SizedBox(height: 24),
+              FutureBuilder<PackageInfo>(
+                future: PackageInfo.fromPlatform(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData) {
+                    return Text(
+                      'Version ${snapshot.data!.version} (${snapshot.data!.buildNumber})',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: Colors.white30,
+                      ),
+                      textAlign: TextAlign.center,
+                    );
+                  }
+                  return const SizedBox();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFriendsSection() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.02),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Friends',
+                style: GoogleFonts.outfit(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              IconButton(
+                icon: const Icon(Icons.sync_rounded, color: Colors.tealAccent, size: 20),
+                onPressed: _loadFriends,
+                tooltip: 'Refresh friends',
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Search Bar
+          TextField(
+            controller: _searchController,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Search username...',
+              hintStyle: const TextStyle(color: Colors.white30, fontSize: 14),
+              prefixIcon: const Icon(Icons.search_rounded, color: Colors.white38),
+              suffixIcon: _isSearching
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: Padding(
+                        padding: EdgeInsets.all(12.0),
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.tealAccent),
+                      ),
+                    )
+                  : IconButton(
+                      icon: const Icon(Icons.arrow_forward_rounded, color: Colors.tealAccent),
+                      onPressed: _performSearch,
+                    ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              filled: true,
+              fillColor: Colors.white.withOpacity(0.02),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.05)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.teal),
               ),
             ),
-            const SizedBox(height: 36),
+            onSubmitted: (_) => _performSearch(),
+          ),
+          const SizedBox(height: 16),
 
-            // User stats box
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.02),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withOpacity(0.05)),
+          // Search Results
+          if (_searchResults != null) ...[
+            Text(
+              'Search Results',
+              style: GoogleFonts.outfit(color: Colors.white54, fontSize: 13, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            if (_searchResults!.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Text(
+                  'No players found matching "$_lastSearchQuery"',
+                  style: GoogleFonts.inter(color: Colors.white38, fontSize: 13, fontStyle: FontStyle.italic),
+                ),
+              )
+            else
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _searchResults!.length,
+                itemBuilder: (context, idx) {
+                  final sUser = _searchResults![idx];
+                  final isAlreadyFriend = _friends?.any((f) => f.id == sUser.id) ?? false;
+                  
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.03),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 14,
+                          backgroundColor: Colors.tealAccent.withOpacity(0.2),
+                          child: Text(
+                            sUser.username.substring(0, 1).toUpperCase(),
+                            style: const TextStyle(color: Colors.tealAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                sUser.username,
+                                style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                              ),
+                              Text(
+                                'ELO: ${sUser.elo}',
+                                style: GoogleFonts.inter(color: Colors.white38, fontSize: 11),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (isAlreadyFriend)
+                          const Icon(Icons.check_circle_outline_rounded, color: Colors.tealAccent, size: 22)
+                        else
+                          IconButton(
+                            icon: const Icon(Icons.person_add_alt_1_rounded, color: Colors.tealAccent, size: 22),
+                            onPressed: () => _addFriend(sUser.id),
+                            tooltip: 'Add Friend',
+                          ),
+                      ],
+                    ),
+                  );
+                },
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Performance stats',
-                    style: GoogleFonts.outfit(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.bold),
+            const Divider(color: Colors.white12, height: 24),
+          ],
+
+          // Friends List
+          Text(
+            'My Friends',
+            style: GoogleFonts.outfit(color: Colors.white54, fontSize: 13, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          if (_isLoadingFriends)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 16.0),
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.teal),
+                ),
+              ),
+            )
+          else if (_friends == null || _friends!.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              child: Center(
+                child: Text(
+                  'No friends added yet.',
+                  style: GoogleFonts.inter(color: Colors.white38, fontSize: 13, fontStyle: FontStyle.italic),
+                ),
+              ),
+            )
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _friends!.length,
+              itemBuilder: (context, idx) {
+                final friend = _friends![idx];
+                final totalFriendsGames = friend.wins + friend.losses + friend.draws;
+                
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.01),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white.withOpacity(0.03)),
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  child: Row(
                     children: [
-                      _statItem('Matches', '$totalGames'),
-                      _statItem('Wins', '$wins', color: Colors.green[400]),
-                      _statItem('Losses', '$losses', color: Colors.red[400]),
-                      _statItem('Winrate', '$winrate%', color: Colors.teal[300]),
+                      CircleAvatar(
+                        radius: 16,
+                        backgroundColor: Colors.teal[800],
+                        child: Text(
+                          friend.username.substring(0, 1).toUpperCase(),
+                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              friend.username,
+                              style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'ELO: ${friend.elo}  •  Games: $totalFriendsGames (W:${friend.wins} L:${friend.losses})',
+                              style: GoogleFonts.inter(color: Colors.white38, fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.sports_esports_rounded, color: Colors.tealAccent, size: 20),
                     ],
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 36),
-
-            // Change Password Button
-            ElevatedButton.icon(
-              onPressed: () {
-                _showChangePasswordDialog(context, ref);
-              },
-              icon: const Icon(Icons.lock_outline, color: Colors.white),
-              label: const Text('Change Password', style: TextStyle(color: Colors.white)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal[600],
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Log Out Button
-            ElevatedButton.icon(
-              onPressed: () {
-                ref.read(authProvider.notifier).logout();
-              },
-              icon: const Icon(Icons.logout_rounded, color: Colors.white),
-              label: const Text('Log Out', style: TextStyle(color: Colors.white)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red[400],
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-            ),
-            const SizedBox(height: 24),
-            FutureBuilder<PackageInfo>(
-              future: PackageInfo.fromPlatform(),
-              builder: (context, snapshot) {
-                if (snapshot.hasData) {
-                  return Text(
-                    'Version ${snapshot.data!.version} (${snapshot.data!.buildNumber})',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: Colors.white30,
-                    ),
-                    textAlign: TextAlign.center,
-                  );
-                }
-                return const SizedBox();
+                );
               },
             ),
-          ],
-        ),
+        ],
       ),
     );
   }

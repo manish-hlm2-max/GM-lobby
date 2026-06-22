@@ -194,6 +194,31 @@ router.get('/my-active', authMiddleware, async (req: AuthRequest, res: Response)
   }
 });
 
+// 3.7. Get my completed match history
+router.get('/history', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+    const matches = await Match.find({
+      status: 'COMPLETED',
+      $or: [
+        { whitePlayerId: userId },
+        { blackPlayerId: userId }
+      ]
+    })
+    .populate('whitePlayerId', 'username elo')
+    .populate('blackPlayerId', 'username elo')
+    .sort({ updatedAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      matches,
+    });
+  } catch (error) {
+    console.error('Fetch match history error:', error);
+    res.status(500).json({ success: false, error: 'Server error fetching match history.' });
+  }
+});
+
 // 4. Get active game details
 router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
