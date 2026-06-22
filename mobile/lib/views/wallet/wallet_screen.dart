@@ -29,6 +29,16 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
     super.dispose();
   }
 
+  String _formatDate(DateTime dt) {
+    final local = dt.toLocal();
+    final year = local.year;
+    final month = local.month.toString().padLeft(2, '0');
+    final day = local.day.toString().padLeft(2, '0');
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
+    return '$year-$month-$day $hour:$minute';
+  }
+
   void _showTransactionSheet(bool isDeposit) {
     _amountController.clear();
     showModalBottomSheet(
@@ -293,7 +303,12 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                                     const SizedBox(height: 4),
                                     Text(
                                       tx.description,
-                                      style: GoogleFonts.inter(color: Colors.white38, fontSize: 12),
+                                      style: GoogleFonts.inter(color: Colors.white70, fontSize: 12),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      _formatDate(tx.createdAt),
+                                      style: GoogleFonts.inter(color: Colors.white38, fontSize: 10),
                                     ),
                                   ],
                                 ),
