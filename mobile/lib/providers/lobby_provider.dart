@@ -81,6 +81,20 @@ class LobbyNotifier extends StateNotifier<LobbyState> {
     return null;
   }
 
+  Future<Map<String, dynamic>> startMatchmaking(double entryFee, int timeControl) async {
+    return await _matchService.matchmake(entryFee: entryFee, timeControl: timeControl);
+  }
+
+  Future<Map<String, dynamic>> forceBotJoin(String matchId) async {
+    return await _matchService.forceBotJoin(matchId);
+  }
+
+  Future<Map<String, dynamic>> cancelMatchmaking(String matchId) async {
+    final res = await _matchService.cancelMatchmake(matchId);
+    refreshLobby();
+    return res;
+  }
+
   Future<bool> registerTournament(String tournamentId) async {
     final res = await _tournamentService.registerTournament(tournamentId);
     if (res['success'] == true) {

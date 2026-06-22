@@ -138,4 +138,93 @@ class MatchService {
       return [];
     }
   }
+
+  Future<Map<String, dynamic>> matchmake({
+    required double entryFee,
+    required int timeControl,
+  }) async {
+    try {
+      final token = await _authService.getToken();
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/api/match/matchmake'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'entryFee': entryFee,
+          'timeControl': timeControl,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+      if (data['success'] == true) {
+        return {
+          'success': true,
+          'match': MatchModel.fromJson(data['match']),
+        };
+      }
+      return {
+        'success': false,
+        'error': data['error'] ?? 'Matchmaking failed.',
+      };
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> forceBotJoin(String matchId) async {
+    try {
+      final token = await _authService.getToken();
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/api/match/force-bot-join'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'matchId': matchId}),
+      );
+
+      final data = jsonDecode(response.body);
+      if (data['success'] == true) {
+        return {
+          'success': true,
+          'match': MatchModel.fromJson(data['match']),
+        };
+      }
+      return {
+        'success': false,
+        'error': data['error'] ?? 'Force bot join failed.',
+      };
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> cancelMatchmake(String matchId) async {
+    try {
+      final token = await _authService.getToken();
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/api/match/cancel-matchmake'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'matchId': matchId}),
+      );
+
+      final data = jsonDecode(response.body);
+      if (data['success'] == true) {
+        return {
+          'success': true,
+        };
+      }
+      return {
+        'success': false,
+        'error': data['error'] ?? 'Cancellation failed.',
+      };
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
+  }
 }

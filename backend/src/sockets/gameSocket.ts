@@ -15,7 +15,14 @@ const gameTimers: { [matchId: string]: NodeJS.Timeout } = {};
 // Map to track connected users: userId -> Socket IDs
 const activeConnections: { [userId: string]: string[] } = {};
 
+let ioInstance: Server | null = null;
+
+export const getIoInstance = (): Server | null => {
+  return ioInstance;
+};
+
 export const setupGameSocket = (io: Server) => {
+  ioInstance = io;
   // Seed bots and start scheduler
   seedBots().then(() => {
     startBotScheduler(io);
@@ -591,6 +598,12 @@ export const startBotScheduler = (io: Server) => {
         // Concurrency check: make sure another bot didn't join in this tick
         const freshMatch = await Match.findById(match._id);
         if (!freshMatch || freshMatch.status !== 'WAITING') continue;
+
+        // ONLY auto-join if the match was created at least 15 seconds ago
+        const elapsedMs = Date.now() - new Date(freshMatch.createdAt).getTime();
+        if (elapsedMs < 15000) {
+          continue;
+        }
 
         const hostId = freshMatch.whitePlayerId || freshMatch.blackPlayerId;
         if (!hostId) continue;
