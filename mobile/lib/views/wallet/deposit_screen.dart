@@ -76,9 +76,9 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
     final balance = authState.wallet?.balance ?? 0.0;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC), // Light background like in the screenshot
+      backgroundColor: const Color(0xFF030712),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFE50914), // Red color theme header
+        backgroundColor: const Color(0xFF0F172A),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -95,7 +95,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
         centerTitle: true,
       ),
       body: walletState.isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFFE50914)))
+          ? const Center(child: CircularProgressIndicator(color: Colors.teal))
           : Form(
               key: _formKey,
               child: SingleChildScrollView(
@@ -107,19 +107,16 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFE50914), Color(0xFFB80710)],
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.teal.withOpacity(0.15),
+                            Colors.teal.withOpacity(0.03),
+                          ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
                         borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFE50914).withOpacity(0.3),
-                            blurRadius: 15,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
+                        border: Border.all(color: Colors.teal.withOpacity(0.2)),
                       ),
                       child: Stack(
                         children: [
@@ -128,12 +125,12 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
                             children: [
                               Row(
                                 children: [
-                                  const Icon(Icons.account_balance_wallet_outlined, color: Colors.white70, size: 18),
+                                  const Icon(Icons.account_balance_wallet_outlined, color: Colors.teal, size: 18),
                                   const SizedBox(width: 6),
                                   Text(
                                     'AVAILABLE BALANCE',
                                     style: GoogleFonts.inter(
-                                      color: Colors.white70,
+                                      color: Colors.teal[300],
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
                                       letterSpacing: 0.8,
@@ -155,7 +152,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.15),
+                                  color: Colors.teal.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Row(
@@ -183,7 +180,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
                             child: Icon(
                               Icons.account_balance_wallet,
                               size: 100,
-                              color: Colors.white.withOpacity(0.08),
+                              color: Colors.teal.withOpacity(0.05),
                             ),
                           ),
                         ],
@@ -201,7 +198,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
                           bottom: 24,
                           child: Container(
                             width: 2,
-                            color: Colors.grey[300],
+                            color: Colors.white.withOpacity(0.08),
                           ),
                         ),
 
@@ -249,7 +246,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
                         Text(
                           '⏳ Your deposit will be credited after admin verification',
                           style: GoogleFonts.inter(
-                            color: Colors.grey[600],
+                            color: Colors.white38,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
@@ -283,16 +280,16 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: isActive ? const Color(0xFFE50914) : Colors.white,
+                color: isActive ? Colors.teal[400] : const Color(0xFF0F172A),
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isActive ? const Color(0xFFE50914) : Colors.grey[300]!,
+                  color: isActive ? Colors.teal[400]! : Colors.white.withOpacity(0.08),
                   width: 2,
                 ),
                 boxShadow: isActive
                     ? [
                         BoxShadow(
-                          color: const Color(0xFFE50914).withOpacity(0.2),
+                          color: Colors.teal[400]!.withOpacity(0.2),
                           blurRadius: 8,
                           offset: const Offset(0, 3),
                         )
@@ -303,7 +300,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
                 child: Text(
                   stepNumber,
                   style: GoogleFonts.outfit(
-                    color: isActive ? Colors.white : Colors.grey[600],
+                    color: isActive ? Colors.white : Colors.white38,
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
                   ),
@@ -321,7 +318,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
                     style: GoogleFonts.outfit(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: const Color(0xFF1E293B),
+                      color: Colors.white,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -329,7 +326,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
                     subtext,
                     style: GoogleFonts.inter(
                       fontSize: 12,
-                      color: Colors.grey[500],
+                      color: Colors.white38,
                     ),
                   ),
                 ],
@@ -350,9 +347,9 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withOpacity(0.02),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey[200]!),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -361,16 +358,16 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
           TextFormField(
             controller: _amountController,
             keyboardType: TextInputType.number,
-            style: GoogleFonts.inter(color: const Color(0xFF1E293B), fontWeight: FontWeight.bold),
+            style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold),
             decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.currency_rupee, color: Colors.grey, size: 20),
+              prefixIcon: const Icon(Icons.currency_rupee, color: Colors.teal, size: 20),
               labelText: 'Deposit Amount (₹)',
-              labelStyle: const TextStyle(color: Colors.grey),
+              labelStyle: const TextStyle(color: Colors.white38),
               filled: true,
-              fillColor: const Color(0xFFF8FAFC),
+              fillColor: Colors.white.withOpacity(0.04),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey[200]!),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -390,7 +387,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
             style: GoogleFonts.inter(
               fontSize: 12,
               fontWeight: FontWeight.bold,
-              color: Colors.grey[600],
+              color: Colors.white54,
             ),
           ),
           const SizedBox(height: 10),
@@ -399,22 +396,23 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
             spacing: 8,
             runSpacing: 8,
             children: [100.0, 500.0, 1000.0, 2000.0, 5000.0].map((amt) {
+              final isSelected = _amountController.text == amt.toStringAsFixed(0);
               return InkWell(
                 onTap: () => _selectAmount(amt),
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: isSelected ? Colors.teal.withOpacity(0.1) : Colors.white.withOpacity(0.02),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[200]!),
+                    border: Border.all(color: isSelected ? Colors.teal : Colors.white.withOpacity(0.08)),
                   ),
                   child: Text(
                     '₹${amt.toStringAsFixed(0)}',
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
-                      color: const Color(0xFF1E293B),
+                      color: isSelected ? Colors.teal[300] : Colors.white,
                     ),
                   ),
                 ),
@@ -430,9 +428,9 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withOpacity(0.02),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey[200]!),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -442,7 +440,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[100]!),
+                border: Border.all(color: Colors.white.withOpacity(0.06)),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
@@ -455,7 +453,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
                         width: 140,
                         height: 140,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
+                          color: Colors.white.withOpacity(0.04),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         // Mock grid patterns for QR code representation
@@ -487,7 +485,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
                   const SizedBox(height: 8),
                   Text(
                     'Scan this QR code to complete payment',
-                    style: GoogleFonts.inter(fontSize: 11, color: Colors.grey[500]),
+                    style: GoogleFonts.inter(fontSize: 11, color: Colors.white38),
                   ),
                 ],
               ),
@@ -499,9 +497,9 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
+              color: Colors.white.withOpacity(0.04),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[150] ?? Colors.grey[200]!),
+              border: Border.all(color: Colors.white.withOpacity(0.08)),
             ),
             child: Row(
               children: [
@@ -514,7 +512,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
                         style: GoogleFonts.inter(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          color: Colors.grey[500],
+                          color: Colors.white38,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -523,14 +521,14 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
                         style: GoogleFonts.inter(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
-                          color: const Color(0xFF1E293B),
+                          color: Colors.white,
                         ),
                       ),
                     ],
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.copy, color: Color(0xFFE50914), size: 20),
+                  icon: const Icon(Icons.copy, color: Colors.teal, size: 20),
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: _merchantUpiId));
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -555,13 +553,15 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
               'Pay with UPI App',
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: Colors.teal[300],
               ),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF94A3B8), // Grey button like screenshot
+              backgroundColor: Colors.teal.withOpacity(0.05),
+              foregroundColor: Colors.teal[300],
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              side: BorderSide(color: Colors.teal.withOpacity(0.2)),
               elevation: 0,
             ),
           ),
@@ -574,9 +574,9 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withOpacity(0.02),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey[200]!),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -586,17 +586,17 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
             controller: _utrController,
             keyboardType: TextInputType.number,
             maxLength: 12,
-            style: GoogleFonts.inter(color: const Color(0xFF1E293B), fontWeight: FontWeight.bold),
+            style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold),
             decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.receipt_long_outlined, color: Colors.grey, size: 20),
+              prefixIcon: const Icon(Icons.receipt_long_outlined, color: Colors.teal, size: 20),
               labelText: 'UPI Transaction / UTR ID',
-              labelStyle: const TextStyle(color: Colors.grey),
+              labelStyle: const TextStyle(color: Colors.white38),
               filled: true,
-              fillColor: const Color(0xFFF8FAFC),
+              fillColor: Colors.white.withOpacity(0.04),
               counterText: '',
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey[200]!),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -616,12 +616,12 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.info_outline, color: Colors.grey, size: 14),
+              const Icon(Icons.info_outline, color: Colors.white38, size: 14),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   'Locate 12-digit UTR/Ref No. in payment details screen.',
-                  style: GoogleFonts.inter(fontSize: 10, color: Colors.grey[500], height: 1.3),
+                  style: GoogleFonts.inter(fontSize: 10, color: Colors.white38, height: 1.3),
                 ),
               ),
             ],
@@ -632,7 +632,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
           ElevatedButton(
             onPressed: _submitDeposit,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF81E2B3), // Mint green button
+              backgroundColor: Colors.teal[400],
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               elevation: 2,
@@ -656,7 +656,7 @@ class QrPatternPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFF1E293B)
+      ..color = Colors.teal[400]!
       ..style = PaintingStyle.fill;
 
     // Drawing outer position detection markers (top-left, top-right, bottom-left)
@@ -690,11 +690,11 @@ class QrPatternPainter extends CustomPainter {
   void _drawMarker(Canvas canvas, Offset offset, Paint paint) {
     // Outer square (30x30)
     canvas.drawRect(Rect.fromLTWH(offset.dx, offset.dy, 30, 30), paint);
-    // Inner white space (20x20)
-    final whitePaint = Paint()
-      ..color = const Color(0xFFF1F5F9)
+    // Inner space matching card background Color(0xFF0F172A)
+    final spacePaint = Paint()
+      ..color = const Color(0xFF0F172A)
       ..style = PaintingStyle.fill;
-    canvas.drawRect(Rect.fromLTWH(offset.dx + 5, offset.dy + 5, 20, 20), whitePaint);
+    canvas.drawRect(Rect.fromLTWH(offset.dx + 5, offset.dy + 5, 20, 20), spacePaint);
     // Inner solid square (10x10)
     canvas.drawRect(Rect.fromLTWH(offset.dx + 10, offset.dy + 10, 10, 10), paint);
   }
