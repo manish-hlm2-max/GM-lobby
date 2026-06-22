@@ -467,7 +467,7 @@ class MatchmakingDialogContent extends ConsumerStatefulWidget {
 
 class _MatchmakingDialogContentState extends ConsumerState<MatchmakingDialogContent> {
   Timer? _timer;
-  int _secondsLeft = 60;
+  int _secondsLeft = 20;
   MatchModel? _match;
   String _statusText = 'Finding your match...';
 
@@ -486,7 +486,7 @@ class _MatchmakingDialogContentState extends ConsumerState<MatchmakingDialogCont
   void _startSearch() {
     // Start periodic countdown timer
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_secondsLeft > 30) {
+      if (_secondsLeft > 0) {
         setState(() {
           _secondsLeft--;
         });

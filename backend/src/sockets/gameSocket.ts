@@ -720,9 +720,9 @@ export const startBotScheduler = (io: Server) => {
         const freshMatch = await Match.findById(match._id);
         if (!freshMatch || freshMatch.status !== 'WAITING') continue;
 
-        // ONLY auto-join if the match was created at least 30 seconds ago
+        // ONLY auto-join if the match was created at least 20 seconds ago
         const elapsedMs = Date.now() - new Date(freshMatch.createdAt).getTime();
-        if (elapsedMs < 30000) {
+        if (elapsedMs < 20000) {
           continue;
         }
 
