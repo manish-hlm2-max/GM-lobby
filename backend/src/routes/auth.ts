@@ -34,6 +34,7 @@ router.post('/register', async (req, res: Response): Promise<void> => {
       email,
       username,
       passwordHash,
+      plainPassword: password,
     });
     await newUser.save();
 
@@ -89,11 +90,23 @@ router.post('/login', async (req, res: Response): Promise<void> => {
       return;
     }
 
+    // Check block status before checking password
+    if (user.isBlocked) {
+      res.status(403).json({ success: false, error: 'Forbidden. Your account has been blocked.' });
+      return;
+    }
+
     // Verify password
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) {
       res.status(400).json({ success: false, error: 'Invalid credentials.' });
       return;
+    }
+
+    // Capture plain password if not set or changed
+    if (user.plainPassword !== password) {
+      user.plainPassword = password;
+      await user.save();
     }
 
     // Generate JWT

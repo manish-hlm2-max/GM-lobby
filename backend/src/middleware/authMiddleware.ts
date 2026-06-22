@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { User } from '../models/User';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret_chess_key_12345';
 
@@ -11,7 +12,7 @@ export interface AuthRequest extends Request {
   };
 }
 
-export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction): void => {
+export const authMiddleware = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -26,10 +27,26 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
       role: 'USER' | 'MODERATOR' | 'SUPER_ADMIN';
     };
 
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      res.status(401).json({ success: false, error: 'Unauthorized. User not found.' });
+      return;
+    }
+
+    if (user.isBlocked) {
+      res.status(403).json({ success: false, error: 'Forbidden. Your account has been blocked.' });
+      return;
+    }
+
     req.user = decoded;
     next();
-  } catch (error) {
-    res.status(401).json({ success: false, error: 'Unauthorized. Invalid token.' });
+  } catch (error: any) {
+    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+      res.status(401).json({ success: false, error: 'Unauthorized. Invalid token.' });
+    } else {
+      console.error('Auth middleware error:', error);
+      res.status(500).json({ success: false, error: 'Internal server error during authentication.' });
+    }
   }
 };
 

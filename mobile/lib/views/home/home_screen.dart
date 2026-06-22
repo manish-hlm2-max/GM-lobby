@@ -45,7 +45,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 children: [
                   // Entry Fee Slider
                   Text(
-                    'Entry Fee: \$${entryFee.toStringAsFixed(2)}',
+                    'Entry Fee: ₹${entryFee.toStringAsFixed(2)}',
                     style: GoogleFonts.inter(color: Colors.white70),
                   ),
                   Slider(
@@ -203,7 +203,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          '\$${authState.wallet?.balance.toStringAsFixed(2) ?? "0.00"}',
+                          '₹${authState.wallet?.balance.toStringAsFixed(2) ?? "0.00"}',
                           style: GoogleFonts.outfit(color: Colors.teal[300], fontSize: 22, fontWeight: FontWeight.bold),
                         ),
                         Text(
@@ -266,7 +266,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    '${duration}m • Prize: \$${match.prizePool.toStringAsFixed(2)}',
+                                    '${duration}m • Prize: ₹${match.prizePool.toStringAsFixed(2)}',
                                     style: GoogleFonts.inter(color: Colors.white60, fontSize: 11),
                                   ),
                                 ],
@@ -349,7 +349,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        'Format: $duration min • Entry: \$${match.entryFee.toStringAsFixed(2)}',
+                                        'Format: $duration min • Entry: ₹${match.entryFee.toStringAsFixed(2)}',
                                         style: GoogleFonts.inter(color: Colors.white70, fontSize: 13),
                                       ),
                                     ],
@@ -363,7 +363,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                       style: GoogleFonts.inter(color: Colors.white38, fontSize: 10),
                                     ),
                                     Text(
-                                      '\$${match.prizePool.toStringAsFixed(2)}',
+                                      '₹${match.prizePool.toStringAsFixed(2)}',
                                       style: GoogleFonts.outfit(color: Colors.amber[400], fontWeight: FontWeight.bold, fontSize: 16),
                                     ),
                                     const SizedBox(height: 8),

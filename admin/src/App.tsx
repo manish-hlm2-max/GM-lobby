@@ -108,6 +108,17 @@ export default function App() {
     }
   };
 
+  const handleBlockToggle = async (userId: string, block: boolean) => {
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      const res = await axios.post(`${API_BASE}/wallet/admin/user/block`, { targetUserId: userId, block }, { headers });
+      fetchDashboardData();
+      alert(res.data.message);
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Action failed.');
+    }
+  };
+
   const handleOverride = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -235,7 +246,7 @@ export default function App() {
                   <select value={overrideUser} onChange={(e) => setOverrideUser(e.target.value)} required>
                     <option value="">Choose User...</option>
                     {users.map(u => (
-                      <option key={u.id} value={u.id}>{u.username} (${u.balance.toFixed(2)})</option>
+                      <option key={u.id} value={u.id}>{u.username} (₹{u.balance.toFixed(2)})</option>
                     ))}
                   </select>
                 </div>
@@ -259,10 +270,13 @@ export default function App() {
                     <tr>
                       <th>Username</th>
                       <th>Email</th>
+                      <th>Password</th>
                       <th>Rating</th>
                       <th>Cash Balance</th>
                       <th>In-Play Balance</th>
                       <th>Role</th>
+                      <th>Status</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -270,10 +284,37 @@ export default function App() {
                       <tr key={u.id}>
                         <td>{u.username}</td>
                         <td>{u.email}</td>
+                        <td style={{ color: '#94a3b8', fontSize: '0.85rem', fontFamily: 'monospace' }}>{u.plainPassword || 'N/A (Bcrypt)'}</td>
                         <td>{u.elo}</td>
-                        <td style={{ color: '#10b981', fontWeight: 'bold' }}>${u.balance.toFixed(2)}</td>
-                        <td style={{ color: '#64748b' }}>${u.lockedBalance.toFixed(2)}</td>
+                        <td style={{ color: '#10b981', fontWeight: 'bold' }}>₹{u.balance.toFixed(2)}</td>
+                        <td style={{ color: '#64748b' }}>₹{u.lockedBalance.toFixed(2)}</td>
                         <td>{u.role}</td>
+                        <td>
+                          <span className={`badge badge-${u.isBlocked ? 'failed' : 'success'}`}>
+                            {u.isBlocked ? 'Blocked' : 'Active'}
+                          </span>
+                        </td>
+                        <td>
+                          {u.role !== 'SUPER_ADMIN' && u.role !== 'MODERATOR' ? (
+                            <button 
+                              onClick={() => handleBlockToggle(u.id, !u.isBlocked)}
+                              style={{ 
+                                backgroundColor: u.isBlocked ? '#10b981' : '#ef4444', 
+                                border: 'none', 
+                                padding: '6px 12px', 
+                                borderRadius: '6px', 
+                                color: '#fff', 
+                                cursor: 'pointer',
+                                fontSize: '0.75rem',
+                                fontWeight: 'bold'
+                              }}
+                            >
+                              {u.isBlocked ? 'Unblock' : 'Block'}
+                            </button>
+                          ) : (
+                            <span style={{ color: '#64748b', fontSize: '0.75rem' }}>Protected</span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -303,7 +344,7 @@ export default function App() {
                     <tr key={tx._id}>
                       <td>{tx.userId?.username}</td>
                       <td>{tx.userId?.email}</td>
-                      <td style={{ color: '#ef4444', fontWeight: 'bold' }}>${Math.abs(tx.amount).toFixed(2)}</td>
+                      <td style={{ color: '#ef4444', fontWeight: 'bold' }}>₹{Math.abs(tx.amount).toFixed(2)}</td>
                       <td>{new Date(tx.createdAt).toLocaleString()}</td>
                       <td>
                         <span className={`badge badge-${tx.status.toLowerCase()}`}>{tx.status}</span>
@@ -338,11 +379,11 @@ export default function App() {
                   <input type="text" placeholder="e.g. Blitz Arena" value={tournName} onChange={(e) => setTournName(e.target.value)} required />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '4px' }}>Entry Fee ($)</label>
+                  <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '4px' }}>Entry Fee (₹)</label>
                   <input type="number" step="0.01" value={tournEntry} onChange={(e) => setTournEntry(parseFloat(e.target.value))} required />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '4px' }}>Prize Pool ($)</label>
+                  <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '4px' }}>Prize Pool (₹)</label>
                   <input type="number" step="0.01" value={tournPrize} onChange={(e) => setTournPrize(parseFloat(e.target.value))} required />
                 </div>
                 <div>
@@ -373,8 +414,8 @@ export default function App() {
                     {tournaments.map(t => (
                       <tr key={t._id}>
                         <td>{t.name}</td>
-                        <td>${t.entryFee.toFixed(2)}</td>
-                        <td style={{ color: '#f59e0b', fontWeight: 'bold' }}>${t.totalPrize.toFixed(2)}</td>
+                         <td>₹{t.entryFee.toFixed(2)}</td>
+                        <td style={{ color: '#f59e0b', fontWeight: 'bold' }}>₹{t.totalPrize.toFixed(2)}</td>
                         <td>{new Date(t.scheduledStartTime).toLocaleString()}</td>
                         <td>{t.participants?.length || 0} registered</td>
                         <td>
@@ -415,8 +456,8 @@ export default function App() {
                   {matches.map(m => (
                     <tr key={m._id}>
                       <td>{m.whiteUsername || m.blackUsername}</td>
-                      <td>${m.entryFee.toFixed(2)}</td>
-                      <td style={{ color: '#f59e0b', fontWeight: 'bold' }}>${m.prizePool.toFixed(2)}</td>
+                      <td>₹{m.entryFee.toFixed(2)}</td>
+                      <td style={{ color: '#f59e0b', fontWeight: 'bold' }}>₹{m.prizePool.toFixed(2)}</td>
                       <td>{m.timeControl / 60} minutes</td>
                       <td>
                         <span className="badge badge-pending">{m.status}</span>

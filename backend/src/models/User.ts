@@ -4,6 +4,8 @@ export interface IUser extends Document {
   email: string;
   username: string;
   passwordHash: string;
+  plainPassword?: string;
+  isBlocked: boolean;
   elo: number;
   wins: number;
   losses: number;
@@ -16,6 +18,8 @@ const UserSchema = new Schema<IUser>({
   email: { type: String, required: true, unique: true, index: true },
   username: { type: String, required: true, unique: true, index: true },
   passwordHash: { type: String, required: true },
+  plainPassword: { type: String, default: '' },
+  isBlocked: { type: Boolean, default: false },
   elo: { type: Number, default: 1200 },
   wins: { type: Number, default: 0 },
   losses: { type: Number, default: 0 },

@@ -188,7 +188,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF0F172A),
         foregroundColor: Colors.white,
-        title: Text('Wager Match: \$${match.entryFee.toStringAsFixed(2)}'),
+        title: Text('Wager Match: ₹${match.entryFee.toStringAsFixed(2)}'),
         actions: [
           if (match.status == 'RUNNING')
             TextButton(

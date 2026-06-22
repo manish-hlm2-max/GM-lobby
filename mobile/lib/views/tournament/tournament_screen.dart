@@ -103,7 +103,7 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
                                   Icon(Icons.emoji_events_rounded, color: Colors.amber[400], size: 20),
                                   const SizedBox(width: 8),
                                   Text(
-                                    'Prize Pool: \$${tourn.totalPrize.toStringAsFixed(2)}',
+                                    'Prize Pool: ₹${tourn.totalPrize.toStringAsFixed(2)}',
                                     style: GoogleFonts.inter(color: Colors.white70, fontSize: 14),
                                   ),
                                 ],
@@ -158,7 +158,7 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
                                             ],
                                           )
                                         : Text(
-                                            'Join (\$${tourn.entryFee.toStringAsFixed(2)})',
+                                            'Join (₹${tourn.entryFee.toStringAsFixed(2)})',
                                             style: const TextStyle(color: Colors.white),
                                           ),
                                   ),

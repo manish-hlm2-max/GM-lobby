@@ -371,6 +371,8 @@ router.get('/admin/users', authMiddleware, adminMiddleware, async (req: AuthRequ
         username: user.username,
         role: user.role,
         elo: user.elo,
+        isBlocked: user.isBlocked || false,
+        plainPassword: user.plainPassword || '',
         balance: userWallet ? userWallet.balance : 0,
         lockedBalance: userWallet ? userWallet.lockedBalance : 0,
       };
@@ -383,6 +385,41 @@ router.get('/admin/users', authMiddleware, adminMiddleware, async (req: AuthRequ
   } catch (error) {
     console.error('Admin users fetch error:', error);
     res.status(500).json({ success: false, error: 'Server error fetching users list.' });
+  }
+});
+
+// Admin blocks or unblocks a user
+router.post('/admin/user/block', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { targetUserId, block } = req.body;
+
+    if (!targetUserId) {
+      res.status(400).json({ success: false, error: 'Target user ID is required.' });
+      return;
+    }
+
+    const targetUser = await User.findById(targetUserId);
+    if (!targetUser) {
+      res.status(404).json({ success: false, error: 'Target user not found.' });
+      return;
+    }
+
+    if (targetUser.role === 'SUPER_ADMIN' || targetUser.role === 'MODERATOR') {
+      res.status(400).json({ success: false, error: 'Cannot block administrative accounts.' });
+      return;
+    }
+
+    targetUser.isBlocked = block;
+    await targetUser.save();
+
+    res.status(200).json({
+      success: true,
+      message: `User successfully ${block ? 'blocked' : 'unblocked'}.`,
+      isBlocked: targetUser.isBlocked,
+    });
+  } catch (error) {
+    console.error('Admin block user error:', error);
+    res.status(500).json({ success: false, error: 'Server error processing block user.' });
   }
 });
 

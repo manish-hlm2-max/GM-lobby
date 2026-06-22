@@ -69,7 +69,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                 style: const TextStyle(color: Colors.white),
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 decoration: InputDecoration(
-                  labelText: 'Amount (\$)',
+                  labelText: 'Amount (₹)',
                   labelStyle: const TextStyle(color: Colors.white54),
                   filled: true,
                   fillColor: Colors.white.withOpacity(0.04),
@@ -171,7 +171,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                       children: [
                         Text('Available Balance', style: GoogleFonts.inter(color: Colors.teal[300], fontSize: 13)),
                         const SizedBox(height: 8),
-                        Text('\$${balance.toStringAsFixed(2)}', style: GoogleFonts.outfit(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                        Text('₹${balance.toStringAsFixed(2)}', style: GoogleFonts.outfit(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
@@ -190,7 +190,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                       children: [
                         Text('Locked / In-Play', style: GoogleFonts.inter(color: Colors.white54, fontSize: 13)),
                         const SizedBox(height: 8),
-                        Text('\$${locked.toStringAsFixed(2)}', style: GoogleFonts.outfit(color: Colors.white70, fontSize: 22, fontWeight: FontWeight.bold)),
+                        Text('₹${locked.toStringAsFixed(2)}', style: GoogleFonts.outfit(color: Colors.white70, fontSize: 22, fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
@@ -302,7 +302,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   Text(
-                                    '${isCredit ? "+" : ""}\$${tx.amount.abs().toStringAsFixed(2)}',
+                                    '${isCredit ? "+" : ""}₹${tx.amount.abs().toStringAsFixed(2)}',
                                     style: GoogleFonts.outfit(color: color, fontWeight: FontWeight.bold, fontSize: 15),
                                   ),
                                   const SizedBox(height: 4),
