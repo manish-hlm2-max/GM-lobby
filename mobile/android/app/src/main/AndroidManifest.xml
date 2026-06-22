@@ -3,7 +3,7 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
 
     <application
-        android:label="mobile"
+        android:label="GM lobby"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

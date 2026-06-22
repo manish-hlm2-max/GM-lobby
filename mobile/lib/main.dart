@@ -22,7 +22,7 @@ class ChessBettingApp extends ConsumerWidget {
     final authState = ref.watch(authProvider);
 
     return MaterialApp(
-      title: 'Grandmaster Chess Lobby',
+      title: 'GM lobby',
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(
         primaryColor: Colors.teal[400],
