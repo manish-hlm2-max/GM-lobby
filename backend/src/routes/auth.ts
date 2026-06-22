@@ -8,6 +8,30 @@ import { authMiddleware, AuthRequest } from '../middleware/authMiddleware';
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'secret_chess_key_12345';
 
+// Check Username Availability
+router.get('/check-username', async (req, res: Response): Promise<void> => {
+  try {
+    const { username } = req.query;
+    if (!username || typeof username !== 'string') {
+      res.status(400).json({ success: false, error: 'Username query parameter is required.' });
+      return;
+    }
+
+    const existingUsername = await User.findOne({
+      username: { $regex: new RegExp(`^${username.trim()}$`, 'i') }
+    });
+
+    if (existingUsername) {
+      res.status(200).json({ success: true, available: false, message: 'Username already taken.' });
+    } else {
+      res.status(200).json({ success: true, available: true, message: 'Username is available.' });
+    }
+  } catch (error) {
+    console.error('Check username error:', error);
+    res.status(500).json({ success: false, error: 'Server error checking username.' });
+  }
+});
+
 // Register User
 router.post('/register', async (req, res: Response): Promise<void> => {
   try {
@@ -18,15 +42,19 @@ router.post('/register', async (req, res: Response): Promise<void> => {
       return;
     }
 
-    // Check if email exists
-    const existingEmail = await User.findOne({ email });
+    // Check if email exists (case-insensitive)
+    const existingEmail = await User.findOne({
+      email: { $regex: new RegExp(`^${email.trim()}$`, 'i') }
+    });
     if (existingEmail) {
       res.status(400).json({ success: false, error: 'Email already in use.' });
       return;
     }
 
-    // Check if username exists
-    const existingUsername = await User.findOne({ username });
+    // Check if username exists (case-insensitive)
+    const existingUsername = await User.findOne({
+      username: { $regex: new RegExp(`^${username.trim()}$`, 'i') }
+    });
     if (existingUsername) {
       res.status(400).json({ success: false, error: 'Username already taken.' });
       return;

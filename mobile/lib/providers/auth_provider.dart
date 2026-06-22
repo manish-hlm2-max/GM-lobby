@@ -73,6 +73,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  Future<Map<String, dynamic>> checkUsernameAvailability(String username) async {
+    return await _authService.checkUsername(username);
+  }
+
   Future<void> logout() async {
     await _authService.clearToken();
     state = AuthState();

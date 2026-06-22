@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -18,15 +19,69 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   final _passwordController = TextEditingController();
   bool _isSignUp = false;
 
+  Timer? _debounceTimer;
+  String? _usernameError;
+  bool _isCheckingUsername = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _usernameController.addListener(_onUsernameChanged);
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
+    _usernameController.removeListener(_onUsernameChanged);
     _usernameController.dispose();
     _passwordController.dispose();
+    _debounceTimer?.cancel();
     super.dispose();
   }
 
+  void _onUsernameChanged() {
+    if (!_isSignUp) return;
+    final username = _usernameController.text.trim();
+    if (username.isEmpty) {
+      setState(() {
+        _usernameError = null;
+      });
+      return;
+    }
+
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () async {
+      if (!mounted) return;
+      setState(() {
+        _isCheckingUsername = true;
+      });
+      final res = await ref.read(authProvider.notifier).checkUsernameAvailability(username);
+      if (!mounted) return;
+      setState(() {
+        _isCheckingUsername = false;
+        if (res['success'] == true && res['available'] == false) {
+          _usernameError = 'Username already taken.';
+        } else {
+          _usernameError = null;
+        }
+      });
+    });
+  }
+
   Future<void> _submit() async {
+    if (_isSignUp) {
+      if (_isCheckingUsername) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Checking username availability, please wait...'),
+            backgroundColor: Colors.amber,
+          ),
+        );
+        return;
+      }
+      if (_usernameError != null) return;
+    }
+
     if (!_formKey.currentState!.validate()) return;
 
     final notifier = ref.read(authProvider.notifier);
@@ -157,9 +212,36 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                               TextFormField(
                                 controller: _usernameController,
                                 style: const TextStyle(color: Colors.white),
-                                decoration: _inputDecoration('Username', Icons.person_outline),
-                                validator: (value) =>
-                                    value == null || value.isEmpty ? 'Please enter username' : null,
+                                decoration: _inputDecoration(
+                                  'Username',
+                                  Icons.person_outline,
+                                  suffixIcon: _isCheckingUsername
+                                      ? const Padding(
+                                          padding: EdgeInsets.all(12.0),
+                                          child: SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
+                                            ),
+                                          ),
+                                        )
+                                      : (_usernameController.text.trim().isNotEmpty
+                                          ? (_usernameError != null
+                                              ? const Icon(Icons.error_outline, color: Colors.redAccent)
+                                              : const Icon(Icons.check_circle_outline, color: Colors.teal))
+                                          : null),
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return 'Please enter username';
+                                  }
+                                  if (_usernameError != null) {
+                                    return _usernameError;
+                                  }
+                                  return null;
+                                },
                               ),
                               const SizedBox(height: 16),
                             ],
@@ -219,6 +301,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                           onPressed: () {
                             setState(() {
                               _isSignUp = !_isSignUp;
+                              _usernameError = null;
+                              _isCheckingUsername = false;
+                              _emailController.clear();
+                              _usernameController.clear();
+                              _passwordController.clear();
+                              _debounceTimer?.cancel();
                             });
                           },
                           child: Text(
@@ -258,11 +346,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     );
   }
 
-  InputDecoration _inputDecoration(String label, IconData icon) {
+  InputDecoration _inputDecoration(String label, IconData icon, {Widget? suffixIcon}) {
     return InputDecoration(
       labelText: label,
       labelStyle: const TextStyle(color: Colors.white54, fontSize: 14),
       prefixIcon: Icon(icon, color: Colors.white38),
+      suffixIcon: suffixIcon,
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       filled: true,
       fillColor: Colors.white.withOpacity(0.03),

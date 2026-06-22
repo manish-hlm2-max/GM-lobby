@@ -102,6 +102,39 @@ class AuthService {
     }
   }
 
+  Future<Map<String, dynamic>> checkUsername(String username) async {
+    try {
+      final response = await http.get(
+        Uri.parse(ApiConfig.checkUsername(username)),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(const Duration(seconds: 10));
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'available': data['available'] ?? false,
+          'message': data['message'] ?? '',
+        };
+      }
+      return {
+        'success': false,
+        'error': data['error'] ?? 'Failed to check username.',
+      };
+    } catch (e) {
+      String errMsg = e.toString();
+      if (errMsg.contains('TimeoutException')) {
+        errMsg = 'Connection timed out. The server is not responding.';
+      } else if (errMsg.contains('SocketException') || errMsg.contains('HandshakeException')) {
+        errMsg = 'Cannot reach server. Please check your internet connection.';
+      }
+      return {
+        'success': false,
+        'error': errMsg,
+      };
+    }
+  }
+
   Future<Map<String, dynamic>?> getMe() async {
     try {
       final token = await getToken();

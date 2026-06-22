@@ -8,6 +8,7 @@ class ApiConfig {
   static const String login = '$baseUrl/api/auth/login';
   static const String me = '$baseUrl/api/auth/me';
   static const String appVersion = '$baseUrl/api/app-version';
+  static String checkUsername(String username) => '$baseUrl/api/auth/check-username?username=${Uri.encodeComponent(username)}';
 
   // Wallet endpoints
   static const String deposit = '$baseUrl/api/wallet/deposit';
