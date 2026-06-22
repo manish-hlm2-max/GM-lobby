@@ -266,7 +266,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    '$durationm • Prize: \$${match.prizePool.toStringAsFixed(2)}',
+                                    '${duration}m • Prize: \$${match.prizePool.toStringAsFixed(2)}',
                                     style: GoogleFonts.inter(color: Colors.white60, fontSize: 11),
                                   ),
                                 ],

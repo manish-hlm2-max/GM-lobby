@@ -77,8 +77,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           setState(() {
             _selectedSquare = square;
             // Get legal destination squares for the selected piece
-            final moves = chess.generate_moves(options: {'square': square});
-            _legalMoves = moves.map((m) => m.toAlgebraic()).toList();
+            final moves = chess.generate_moves({'square': square});
+            _legalMoves = moves.map<String>((m) => (m as ChessDart.Move).toAlgebraic).toList();
           });
         }
       }
@@ -109,8 +109,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           if (isPieceWhite == isWhitePlayer) {
             setState(() {
               _selectedSquare = square;
-              final moves = chess.generate_moves(options: {'square': square});
-              _legalMoves = moves.map((m) => m.toAlgebraic()).toList();
+              final moves = chess.generate_moves({'square': square});
+              _legalMoves = moves.map<String>((m) => (m as ChessDart.Move).toAlgebraic).toList();
             });
             return;
           }
