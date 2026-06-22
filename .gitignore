@@ -1,0 +1,25 @@
+# Dependency directories
+**/node_modules/
+**/dist/
+**/.env
+**/.env.local
+**/*.log
+
+# Flutter/Dart build files
+**/.dart_tool/
+**/build/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+**/.metadata
+
+# Shorebird directories
+**/.shorebird/
+
+# IDE and system files
+.DS_Store
+.idea/
+.vscode/
+*.suo
+*.user
+*.lock

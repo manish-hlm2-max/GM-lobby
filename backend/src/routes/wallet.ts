@@ -1,0 +1,331 @@
+import { Router, Response } from 'express';
+import mongoose from 'mongoose';
+import { Wallet } from '../models/Wallet';
+import { Transaction } from '../models/Transaction';
+import { User } from '../models/User';
+import { authMiddleware, adminMiddleware, AuthRequest } from '../middleware/authMiddleware';
+
+const router = Router();
+
+// 1. Simulate Deposit
+router.post('/deposit', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { amount } = req.body;
+    if (!amount || amount <= 0) {
+      res.status(400).json({ success: false, error: 'Amount must be positive.' });
+      return;
+    }
+
+    const userId = req.user?.id;
+
+    // Start database transaction session
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Create transaction log
+      const transaction = new Transaction({
+        userId,
+        amount,
+        type: 'DEPOSIT',
+        status: 'SUCCESS',
+        description: 'Deposited cash via mock gateway.',
+      });
+      await transaction.save({ session });
+
+      // Atomically update wallet balance
+      const wallet = await Wallet.findOneAndUpdate(
+        { userId },
+        { $inc: { balance: amount } },
+        { new: true, upsert: true, session }
+      );
+
+      await session.commitTransaction();
+      session.endSession();
+
+      res.status(200).json({
+        success: true,
+        balance: wallet.balance,
+        transaction,
+      });
+    } catch (txError) {
+      await session.abortTransaction();
+      session.endSession();
+      throw txError;
+    }
+  } catch (error) {
+    console.error('Deposit error:', error);
+    res.status(500).json({ success: false, error: 'Server error processing deposit.' });
+  }
+});
+
+// 2. Request Withdrawal
+router.post('/withdraw', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { amount } = req.body;
+    if (!amount || amount <= 0) {
+      res.status(400).json({ success: false, error: 'Amount must be positive.' });
+      return;
+    }
+
+    const userId = req.user?.id;
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Find wallet & check available balance atomically
+      // By using findOneAndUpdate with conditional query, we block double spending
+      const wallet = await Wallet.findOneAndUpdate(
+        { userId, balance: { $gte: amount } },
+        { $inc: { balance: -amount, lockedBalance: amount } },
+        { new: true, session }
+      );
+
+      if (!wallet) {
+        res.status(400).json({ success: false, error: 'Insufficient funds.' });
+        await session.abortTransaction();
+        session.endSession();
+        return;
+      }
+
+      // Create transaction log
+      const transaction = new Transaction({
+        userId,
+        amount: -amount,
+        type: 'WITHDRAWAL',
+        status: 'PENDING',
+        description: 'Withdrawal request pending administrative approval.',
+      });
+      await transaction.save({ session });
+
+      await session.commitTransaction();
+      session.endSession();
+
+      res.status(200).json({
+        success: true,
+        balance: wallet.balance,
+        lockedBalance: wallet.lockedBalance,
+        transaction,
+      });
+    } catch (txError) {
+      await session.abortTransaction();
+      session.endSession();
+      throw txError;
+    }
+  } catch (error) {
+    console.error('Withdrawal error:', error);
+    res.status(500).json({ success: false, error: 'Server error processing withdrawal.' });
+  }
+});
+
+// 3. Get Transaction History
+router.get('/history', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+    const transactions = await Transaction.find({ userId }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      transactions,
+    });
+  } catch (error) {
+    console.error('Wallet history error:', error);
+    res.status(500).json({ success: false, error: 'Server error fetching wallet history.' });
+  }
+});
+
+// 4. Admin Administers Withdrawal (Approve / Reject)
+router.post('/admin/withdrawal/:action', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { action } = req.params;
+    const { transactionId } = req.body;
+
+    if (action !== 'approve' && action !== 'reject') {
+      res.status(400).json({ success: false, error: 'Invalid action. Must be approve or reject.' });
+      return;
+    }
+
+    const transaction = await Transaction.findById(transactionId);
+    if (!transaction || transaction.type !== 'WITHDRAWAL' || transaction.status !== 'PENDING') {
+      res.status(400).json({ success: false, error: 'Invalid or non-pending withdrawal transaction.' });
+      return;
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      const withdrawalAmount = Math.abs(transaction.amount); // negative number stored in amount
+
+      if (action === 'approve') {
+        // Successful withdrawal -> deduct from lockedBalance
+        const wallet = await Wallet.findOneAndUpdate(
+          { userId: transaction.userId, lockedBalance: { $gte: withdrawalAmount } },
+          { $inc: { lockedBalance: -withdrawalAmount } },
+          { new: true, session }
+        );
+
+        if (!wallet) {
+          res.status(400).json({ success: false, error: 'Locked balance inconsistency.' });
+          await session.abortTransaction();
+          session.endSession();
+          return;
+        }
+
+        transaction.status = 'SUCCESS';
+        transaction.description = 'Withdrawal processed and approved.';
+        await transaction.save({ session });
+
+      } else {
+        // Rejected withdrawal -> transfer lockedBalance back to available balance
+        const wallet = await Wallet.findOneAndUpdate(
+          { userId: transaction.userId, lockedBalance: { $gte: withdrawalAmount } },
+          { $inc: { balance: withdrawalAmount, lockedBalance: -withdrawalAmount } },
+          { new: true, session }
+        );
+
+        if (!wallet) {
+          res.status(400).json({ success: false, error: 'Locked balance inconsistency.' });
+          await session.abortTransaction();
+          session.endSession();
+          return;
+        }
+
+        transaction.status = 'FAILED';
+        transaction.description = 'Withdrawal request rejected by administrator.';
+        await transaction.save({ session });
+      }
+
+      await session.commitTransaction();
+      session.endSession();
+
+      res.status(200).json({
+        success: true,
+        transaction,
+      });
+    } catch (txError) {
+      await session.abortTransaction();
+      session.endSession();
+      throw txError;
+    }
+  } catch (error) {
+    console.error('Admin withdrawal error:', error);
+    res.status(500).json({ success: false, error: 'Server error processing admin action.' });
+  }
+});
+
+// 5. Admin Balance Override (Audit-Logged)
+router.post('/admin/override', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { targetUserId, amount, reason } = req.body;
+
+    if (!targetUserId || amount === undefined || amount === 0 || !reason) {
+      res.status(400).json({ success: false, error: 'Target User ID, non-zero amount, and a reason are required.' });
+      return;
+    }
+
+    const targetUser = await User.findById(targetUserId);
+    if (!targetUser) {
+      res.status(404).json({ success: false, error: 'Target user not found.' });
+      return;
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Log audit transaction
+      const transaction = new Transaction({
+        userId: targetUserId,
+        amount,
+        type: 'ADMIN_OVERRIDE',
+        status: 'SUCCESS',
+        description: `Admin Override by ${req.user?.email}. Reason: ${reason}`,
+      });
+      await transaction.save({ session });
+
+      // Perform update
+      // Handled carefully to prevent negative balances
+      const updateQuery = amount > 0 
+        ? { $inc: { balance: amount } }
+        : { $inc: { balance: amount }, balance: { $gte: Math.abs(amount) } };
+
+      const wallet = await Wallet.findOneAndUpdate(
+        { userId: targetUserId, ...(amount < 0 ? { balance: { $gte: Math.abs(amount) } } : {}) },
+        { $inc: { balance: amount } },
+        { new: true, upsert: amount > 0, session }
+      );
+
+      if (!wallet) {
+        res.status(400).json({ success: false, error: 'Failed to adjust balance. Would cause negative funds.' });
+        await session.abortTransaction();
+        session.endSession();
+        return;
+      }
+
+      await session.commitTransaction();
+      session.endSession();
+
+      res.status(200).json({
+        success: true,
+        balance: wallet.balance,
+        transaction,
+      });
+    } catch (txError) {
+      await session.abortTransaction();
+      session.endSession();
+      throw txError;
+    }
+  } catch (error) {
+    console.error('Admin override error:', error);
+    res.status(500).json({ success: false, error: 'Server error processing override.' });
+  }
+});
+
+// Admin fetches all users and transaction history (for admin tab views)
+router.get('/admin/users', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const users = await User.find({}).select('-passwordHash');
+    
+    // Fetch wallet balances alongside
+    const wallets = await Wallet.find({});
+    
+    const usersWithWallets = users.map(user => {
+      const userWallet = wallets.find(w => w.userId.toString() === user._id.toString());
+      return {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+        elo: user.elo,
+        balance: userWallet ? userWallet.balance : 0,
+        lockedBalance: userWallet ? userWallet.lockedBalance : 0,
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      users: usersWithWallets,
+    });
+  } catch (error) {
+    console.error('Admin users fetch error:', error);
+    res.status(500).json({ success: false, error: 'Server error fetching users list.' });
+  }
+});
+
+// Admin fetches all transactions in the system
+router.get('/admin/transactions', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const transactions = await Transaction.find({}).populate('userId', 'username email').sort({ createdAt: -1 });
+    res.status(200).json({
+      success: true,
+      transactions,
+    });
+  } catch (error) {
+    console.error('Admin transactions fetch error:', error);
+    res.status(500).json({ success: false, error: 'Server error fetching all system transactions.' });
+  }
+});
+
+export default router;
