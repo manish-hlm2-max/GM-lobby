@@ -200,6 +200,31 @@ router.post('/join', authMiddleware, async (req: AuthRequest, res: Response): Pr
   }
 });
 
+// 3.5. Get my active/running matches
+router.get('/my-active', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+    const matches = await Match.find({
+      status: 'RUNNING',
+      $or: [
+        { whitePlayerId: userId },
+        { blackPlayerId: userId }
+      ]
+    })
+    .populate('whitePlayerId', 'username elo')
+    .populate('blackPlayerId', 'username elo')
+    .sort({ updatedAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      matches,
+    });
+  } catch (error) {
+    console.error('Fetch active matches error:', error);
+    res.status(500).json({ success: false, error: 'Server error fetching active matches.' });
+  }
+});
+
 // 4. Get active game details
 router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {

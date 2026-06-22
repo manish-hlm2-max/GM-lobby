@@ -3,6 +3,8 @@ import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import dns from 'dns';
+dns.setDefaultResultOrder('ipv4first');
 import { connectDB } from './config/db';
 import authRoutes from './routes/auth';
 import walletRoutes from './routes/wallet';

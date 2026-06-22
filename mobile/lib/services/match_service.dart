@@ -115,4 +115,27 @@ class MatchService {
       return null;
     }
   }
+
+  Future<List<MatchModel>> getMyActiveMatches() async {
+    try {
+      final token = await _authService.getToken();
+      final response = await http.get(
+        Uri.parse(ApiConfig.myActiveMatches),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        final list = data['matches'] as List;
+        return list.map((item) => MatchModel.fromJson(item)).toList();
+      }
+      return [];
+    } catch (e) {
+      print('Error fetching my active matches: $e');
+      return [];
+    }
+  }
 }

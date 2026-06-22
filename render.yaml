@@ -3,6 +3,7 @@ services:
     name: chess-betting-backend
     env: node
     plan: starter
+    rootDirectory: backend
     buildCommand: npm install && npm run build
     startCommand: npm start
     envVars:

@@ -17,6 +17,7 @@ class ApiConfig {
   static const String openMatches = '$baseUrl/api/match/open';
   static const String createMatch = '$baseUrl/api/match/create';
   static const String joinMatch = '$baseUrl/api/match/join';
+  static const String myActiveMatches = '$baseUrl/api/match/my-active';
   static String matchDetails(String id) => '$baseUrl/api/match/$id';
 
   // Tournament endpoints

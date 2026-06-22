@@ -216,6 +216,87 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 24),
+
+              if (lobbyState.myActiveMatches.isNotEmpty) ...[
+                Text(
+                  'Your Ongoing Matches',
+                  style: GoogleFonts.outfit(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 96,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: lobbyState.myActiveMatches.length,
+                    itemBuilder: (context, index) {
+                      final match = lobbyState.myActiveMatches[index];
+                      final isWhite = match.whitePlayerId == authState.user?.id;
+                      final opponent = isWhite ? (match.blackUsername ?? 'Waiting...') : (match.whiteUsername ?? 'Waiting...');
+                      final duration = match.timeControl ~/ 60;
+
+                      return Container(
+                        width: 280,
+                        margin: const EdgeInsets.only(right: 16, bottom: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.teal.withOpacity(0.15),
+                              Colors.teal.withOpacity(0.03),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.teal.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'vs $opponent',
+                                    style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '$durationm • Prize: \$${match.prizePool.toStringAsFixed(2)}',
+                                    style: GoogleFonts.inter(color: Colors.white60, fontSize: 11),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            ElevatedButton(
+                              onPressed: () {
+                                ref.read(gameProvider.notifier).initMatch(match);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const GameScreen()),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.teal[400],
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              child: const Text('Resume'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [

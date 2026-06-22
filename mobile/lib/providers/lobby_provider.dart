@@ -6,12 +6,14 @@ import '../services/tournament_service.dart';
 
 class LobbyState {
   final List<MatchModel> openMatches;
+  final List<MatchModel> myActiveMatches;
   final List<TournamentModel> tournaments;
   final bool isLoading;
   final String? error;
 
   LobbyState({
     required this.openMatches,
+    required this.myActiveMatches,
     required this.tournaments,
     this.isLoading = false,
     this.error,
@@ -19,12 +21,14 @@ class LobbyState {
 
   LobbyState copyWith({
     List<MatchModel>? openMatches,
+    List<MatchModel>? myActiveMatches,
     List<TournamentModel>? tournaments,
     bool? isLoading,
     String? error,
   }) {
     return LobbyState(
       openMatches: openMatches ?? this.openMatches,
+      myActiveMatches: myActiveMatches ?? this.myActiveMatches,
       tournaments: tournaments ?? this.tournaments,
       isLoading: isLoading ?? this.isLoading,
       error: error ?? this.error,
@@ -36,15 +40,17 @@ class LobbyNotifier extends StateNotifier<LobbyState> {
   final MatchService _matchService = MatchService();
   final TournamentService _tournamentService = TournamentService();
 
-  LobbyNotifier() : super(LobbyState(openMatches: [], tournaments: []));
+  LobbyNotifier() : super(LobbyState(openMatches: [], myActiveMatches: [], tournaments: []));
 
   Future<void> refreshLobby() async {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final matches = await _matchService.getOpenMatches();
+      final activeMatches = await _matchService.getMyActiveMatches();
       final tournaments = await _tournamentService.getTournaments();
       state = LobbyState(
         openMatches: matches,
+        myActiveMatches: activeMatches,
         tournaments: tournaments,
         isLoading: false,
       );
