@@ -578,7 +578,7 @@ router.post('/admin/deposit-settings', authMiddleware, adminMiddleware, async (r
         }
       }
 
-      qrCodeUrl = `/uploads/${filename}`;
+      qrCodeUrl = `/public/uploads/${filename}`;
       await Settings.findOneAndUpdate(
         { key: 'deposit_qr_code_url' },
         { value: qrCodeUrl },
