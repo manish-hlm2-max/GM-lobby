@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../models/tournament_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/lobby_provider.dart';
+import '../../services/tournament_service.dart';
 import 'tournament_details_screen.dart';
 
 class TournamentScreen extends ConsumerStatefulWidget {
@@ -29,9 +30,17 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
     final authState = ref.watch(authProvider);
     final lobbyState = ref.watch(lobbyProvider);
     final userId = authState.user?.id;
+    final isAdmin = authState.user?.role == 'ADMIN';
 
     return Scaffold(
       backgroundColor: const Color(0xFF030712),
+      floatingActionButton: isAdmin
+          ? FloatingActionButton(
+              onPressed: () => _showAdminCreateDialog(context),
+              backgroundColor: Colors.teal[400],
+              child: const Icon(Icons.add_rounded, color: Colors.white),
+            )
+          : null,
       body: RefreshIndicator(
         color: Colors.teal,
         backgroundColor: const Color(0xFF0F172A),
@@ -67,7 +76,7 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                'Play 1 match every 12 hours. Climb the leaderboard.',
+                                'Play 1 match every round. Climb the leaderboard.',
                                 style: GoogleFonts.inter(color: Colors.white38, fontSize: 12),
                               ),
                             ],
@@ -113,6 +122,7 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
                       return _TournamentCard(
                         tourn: tourn,
                         isRegistered: isRegistered,
+                        isAdmin: isAdmin,
                         onRegister: () async {
                           final success = await ref.read(lobbyProvider.notifier).registerTournament(tourn.id);
                           if (success && mounted) {
@@ -134,9 +144,26 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
                               builder: (_) => TournamentDetailsScreen(tournamentId: tourn.id),
                             ),
                           );
-                          // Refresh lobby when returning from details (user may have played a match)
                           ref.read(lobbyProvider.notifier).refreshLobby();
                         },
+                        onAdminStart: () async {
+                          final res = await TournamentService().adminStartTournament(tourn.id);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  res['success'] == true ? 'Tournament started!' : (res['error'] ?? 'Failed to start'),
+                                  style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                                ),
+                                backgroundColor: res['success'] == true ? Colors.teal[700] : Colors.redAccent,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            );
+                            ref.read(lobbyProvider.notifier).refreshLobby();
+                          }
+                        },
+                        onAdminEdit: () => _showAdminEditDialog(context, tourn),
                       );
                     },
                     childCount: lobbyState.tournaments.length,
@@ -145,6 +172,218 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────
+  //  Admin Create Tournament Dialog
+  // ─────────────────────────────────────────────────────
+
+  void _showAdminCreateDialog(BuildContext context) {
+    final nameCtrl = TextEditingController();
+    final entryFeeCtrl = TextEditingController(text: '0');
+    final prizeCtrl = TextEditingController(text: '0');
+    final roundCountCtrl = TextEditingController(text: '10');
+    final roundHoursCtrl = TextEditingController(text: '12');
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF0F172A),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('Create Tournament', style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _AdminField(controller: nameCtrl, label: 'Tournament Name', icon: Icons.title_rounded),
+                const SizedBox(height: 12),
+                _AdminField(controller: entryFeeCtrl, label: 'Entry Fee (₹)', icon: Icons.monetization_on_rounded, isNumber: true),
+                const SizedBox(height: 12),
+                _AdminField(controller: prizeCtrl, label: 'Prize Pool (₹)', icon: Icons.emoji_events_rounded, isNumber: true),
+                const SizedBox(height: 12),
+                _AdminField(controller: roundCountCtrl, label: 'Number of Rounds', icon: Icons.repeat_rounded, isNumber: true),
+                const SizedBox(height: 12),
+                _AdminField(controller: roundHoursCtrl, label: 'Hours per Round', icon: Icons.timer_rounded, isNumber: true),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Cancel', style: GoogleFonts.inter(color: Colors.white54)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (nameCtrl.text.trim().isEmpty) return;
+
+                final hours = int.tryParse(roundHoursCtrl.text) ?? 12;
+                final roundDurationSeconds = hours * 3600;
+
+                final res = await TournamentService().adminCreateTournament(
+                  name: nameCtrl.text.trim(),
+                  entryFee: double.tryParse(entryFeeCtrl.text) ?? 0,
+                  totalPrize: double.tryParse(prizeCtrl.text) ?? 0,
+                  scheduledStartTime: DateTime.now().add(const Duration(hours: 1)).toIso8601String(),
+                  roundCount: int.tryParse(roundCountCtrl.text) ?? 10,
+                  roundDurationSeconds: roundDurationSeconds,
+                );
+
+                if (mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        res['success'] == true ? 'Tournament created!' : (res['error'] ?? 'Failed'),
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                      ),
+                      backgroundColor: res['success'] == true ? Colors.teal[700] : Colors.redAccent,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  );
+                  ref.read(lobbyProvider.notifier).refreshLobby();
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal[400],
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: Text('Create', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ─────────────────────────────────────────────────────
+  //  Admin Edit Tournament Dialog
+  // ─────────────────────────────────────────────────────
+
+  void _showAdminEditDialog(BuildContext context, TournamentModel tourn) {
+    final nameCtrl = TextEditingController(text: tourn.name);
+    final prizeCtrl = TextEditingController(text: tourn.totalPrize.toStringAsFixed(0));
+    final roundCountCtrl = TextEditingController(text: tourn.roundCount.toString());
+    final roundHoursCtrl = TextEditingController(text: (tourn.roundDurationSeconds / 3600).round().toString());
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF0F172A),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('Edit Tournament', style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _AdminField(controller: nameCtrl, label: 'Tournament Name', icon: Icons.title_rounded),
+                const SizedBox(height: 12),
+                _AdminField(controller: prizeCtrl, label: 'Prize Pool (₹)', icon: Icons.emoji_events_rounded, isNumber: true),
+                const SizedBox(height: 12),
+                _AdminField(controller: roundCountCtrl, label: 'Number of Rounds', icon: Icons.repeat_rounded, isNumber: true),
+                const SizedBox(height: 12),
+                _AdminField(controller: roundHoursCtrl, label: 'Hours per Round', icon: Icons.timer_rounded, isNumber: true),
+                const SizedBox(height: 8),
+                Text(
+                  'Current round duration: ${(tourn.roundDurationSeconds / 3600).round()} hours',
+                  style: GoogleFonts.inter(color: Colors.white24, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Cancel', style: GoogleFonts.inter(color: Colors.white54)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final hours = int.tryParse(roundHoursCtrl.text) ?? 12;
+                final roundDurationSeconds = hours * 3600;
+
+                final res = await TournamentService().adminEditTournament(
+                  tournamentId: tourn.id,
+                  name: nameCtrl.text.trim().isNotEmpty ? nameCtrl.text.trim() : null,
+                  totalPrize: double.tryParse(prizeCtrl.text),
+                  roundCount: int.tryParse(roundCountCtrl.text),
+                  roundDurationSeconds: roundDurationSeconds,
+                );
+
+                if (mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        res['success'] == true ? 'Tournament updated!' : (res['error'] ?? 'Failed'),
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                      ),
+                      backgroundColor: res['success'] == true ? Colors.teal[700] : Colors.redAccent,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  );
+                  ref.read(lobbyProvider.notifier).refreshLobby();
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber[600],
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: Text('Save', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.black87)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────
+//  Admin Text Field Widget
+// ─────────────────────────────────────────────────────
+
+class _AdminField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final IconData icon;
+  final bool isNumber;
+
+  const _AdminField({
+    required this.controller,
+    required this.label,
+    required this.icon,
+    this.isNumber = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+      style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: GoogleFonts.inter(color: Colors.white38, fontSize: 13),
+        prefixIcon: Icon(icon, color: Colors.teal[300], size: 20),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.04),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.teal.withOpacity(0.5)),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
     );
   }
@@ -157,14 +396,20 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
 class _TournamentCard extends StatelessWidget {
   final TournamentModel tourn;
   final bool isRegistered;
+  final bool isAdmin;
   final VoidCallback onRegister;
   final VoidCallback onOpenDetails;
+  final VoidCallback onAdminStart;
+  final VoidCallback onAdminEdit;
 
   const _TournamentCard({
     required this.tourn,
     required this.isRegistered,
+    required this.isAdmin,
     required this.onRegister,
     required this.onOpenDetails,
+    required this.onAdminStart,
+    required this.onAdminEdit,
   });
 
   @override
@@ -176,7 +421,7 @@ class _TournamentCard extends StatelessWidget {
     // Determine border & accent color
     Color accentColor = Colors.teal;
     if (isActive && isRegistered) {
-      accentColor = const Color(0xFF10B981); // emerald green
+      accentColor = const Color(0xFF10B981);
     } else if (isCompleted) {
       accentColor = Colors.blueAccent;
     }
@@ -259,7 +504,37 @@ class _TournamentCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  _StatusBadge(status: tourn.status),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      _StatusBadge(status: tourn.status),
+                      // Admin edit button
+                      if (isAdmin) ...[
+                        const SizedBox(height: 6),
+                        GestureDetector(
+                          onTap: onAdminEdit,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.edit_rounded, color: Colors.amber[400], size: 12),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Edit',
+                                  style: GoogleFonts.inter(color: Colors.amber[400], fontSize: 10, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -297,8 +572,24 @@ class _TournamentCard extends StatelessWidget {
               ),
             ),
 
-            // ── Countdown Timer (only for registered + active tournaments) ──
-            if (isActive && isRegistered && tourn.roundStartTime != null)
+            // ── Round Duration Info ──
+            if (tourn.roundDurationSeconds > 0)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 6, 18, 0),
+                child: Row(
+                  children: [
+                    Icon(Icons.timer_rounded, color: Colors.white24, size: 14),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${(tourn.roundDurationSeconds / 3600).round()}h per round  •  ${tourn.roundCount} rounds',
+                      style: GoogleFonts.inter(color: Colors.white24, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+
+            // ── Countdown Timer (for ALL active tournaments with roundStartTime) ──
+            if (isActive && tourn.roundStartTime != null && tourn.roundDurationSeconds > 0)
               Padding(
                 padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
                 child: _CountdownBanner(
@@ -321,37 +612,61 @@ class _TournamentCard extends StatelessWidget {
 
   Widget _buildActionRow(BuildContext context) {
     if (tourn.status == 'UPCOMING') {
-      return SizedBox(
-        width: double.infinity,
-        height: 44,
-        child: isRegistered
-            ? OutlinedButton.icon(
-                onPressed: null,
-                icon: const Icon(Icons.check_circle_rounded, size: 16),
-                label: Text('Registered', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.teal[300],
-                  side: BorderSide(color: Colors.teal.withOpacity(0.3)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  disabledForegroundColor: Colors.teal[400],
-                ),
-              )
-            : ElevatedButton.icon(
-                onPressed: onRegister,
-                icon: const Icon(Icons.add_rounded, size: 18),
+      return Column(
+        children: [
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: isRegistered
+                ? OutlinedButton.icon(
+                    onPressed: null,
+                    icon: const Icon(Icons.check_circle_rounded, size: 16),
+                    label: Text('Registered', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.teal[300],
+                      side: BorderSide(color: Colors.teal.withOpacity(0.3)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      disabledForegroundColor: Colors.teal[400],
+                    ),
+                  )
+                : ElevatedButton.icon(
+                    onPressed: onRegister,
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: Text(
+                      tourn.entryFee > 0
+                          ? 'Join Tournament  •  ₹${tourn.entryFee.toStringAsFixed(0)}'
+                          : 'Join Tournament  •  Free',
+                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal[400],
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                  ),
+          ),
+          // Admin Start button
+          if (isAdmin && tourn.participants.length >= 2) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              height: 40,
+              child: OutlinedButton.icon(
+                onPressed: onAdminStart,
+                icon: Icon(Icons.play_arrow_rounded, size: 18, color: Colors.green[400]),
                 label: Text(
-                  tourn.entryFee > 0
-                      ? 'Join Tournament  •  ₹${tourn.entryFee.toStringAsFixed(0)}'
-                      : 'Join Tournament  •  Free',
-                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                  'Start Tournament (Admin)',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12, color: Colors.green[400]),
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.teal[400],
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 0,
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Colors.green.withOpacity(0.3)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               ),
+            ),
+          ],
+        ],
       );
     }
 
@@ -538,7 +853,6 @@ class _CountdownBannerState extends State<_CountdownBanner> {
     final isUrgent = _timeRemaining.inMinutes < 30;
     final isExpired = _timeRemaining == Duration.zero;
 
-    // Progress: how much of the 12-hour period has elapsed
     final totalSeconds = widget.durationSeconds;
     final elapsed = totalSeconds - _timeRemaining.inSeconds;
     final progress = (elapsed / totalSeconds).clamp(0.0, 1.0);

@@ -861,11 +861,11 @@ export const startBotScheduler = (io: Server) => {
 };
 
 export const startTournamentScheduler = (io: Server) => {
-  console.log('Starting Grandmaster league tournament rounds scheduler...');
+  console.log('Starting tournament rounds scheduler...');
   setInterval(async () => {
     try {
-      // Find active league tournaments
-      const activeTournaments = await Tournament.find({ status: 'ACTIVE', type: 'LEAGUE_5_DAY' });
+      // Find ALL active tournaments with round-based scheduling (roundDurationSeconds > 0)
+      const activeTournaments = await Tournament.find({ status: 'ACTIVE', roundDurationSeconds: { $gt: 0 } });
       if (activeTournaments.length === 0) return;
 
       const now = new Date();

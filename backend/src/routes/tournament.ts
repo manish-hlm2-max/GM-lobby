@@ -127,7 +127,7 @@ router.post('/admin/create', authMiddleware, adminMiddleware, async (req: AuthRe
 
     const tournamentType = type || 'STANDARD';
     const finalRoundCount = roundCount || (tournamentType === 'LEAGUE_5_DAY' ? 10 : 3);
-    const finalRoundDuration = roundDurationSeconds || (tournamentType === 'LEAGUE_5_DAY' ? 43200 : 0); // Default 12 hours for League
+    const finalRoundDuration = roundDurationSeconds || 43200; // Default 12 hours for all tournaments
 
     const newTournament = new Tournament({
       name,
@@ -147,6 +147,40 @@ router.post('/admin/create', authMiddleware, adminMiddleware, async (req: AuthRe
   } catch (error) {
     console.error('Admin create tournament error:', error);
     res.status(500).json({ success: false, error: 'Server error scheduling tournament.' });
+  }
+});
+
+// 3.5 Admin Edit Tournament
+router.post('/admin/edit', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { tournamentId, name, entryFee, totalPrize, scheduledStartTime, roundCount, roundDurationSeconds } = req.body;
+
+    if (!tournamentId) {
+      res.status(400).json({ success: false, error: 'Tournament ID is required.' });
+      return;
+    }
+
+    const tournament = await Tournament.findById(tournamentId);
+    if (!tournament) {
+      res.status(404).json({ success: false, error: 'Tournament not found.' });
+      return;
+    }
+
+    // Allow editing name, prizes for any status; round settings only for UPCOMING/ACTIVE
+    if (name !== undefined) tournament.name = name;
+    if (entryFee !== undefined && tournament.status === 'UPCOMING') tournament.entryFee = entryFee;
+    if (totalPrize !== undefined) tournament.totalPrize = totalPrize;
+    if (scheduledStartTime !== undefined && tournament.status === 'UPCOMING') {
+      tournament.scheduledStartTime = new Date(scheduledStartTime);
+    }
+    if (roundCount !== undefined && roundCount > 0) tournament.roundCount = roundCount;
+    if (roundDurationSeconds !== undefined && roundDurationSeconds > 0) tournament.roundDurationSeconds = roundDurationSeconds;
+
+    await tournament.save();
+    res.status(200).json({ success: true, tournament });
+  } catch (error) {
+    console.error('Admin edit tournament error:', error);
+    res.status(500).json({ success: false, error: 'Server error editing tournament.' });
   }
 });
 
