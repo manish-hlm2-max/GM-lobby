@@ -5,6 +5,9 @@ class TransactionModel {
   final String status;
   final String description;
   final String? referenceId;
+  final String? bankName;
+  final String? ifscCode;
+  final String? accountHolderName;
   final DateTime createdAt;
 
   TransactionModel({
@@ -14,6 +17,9 @@ class TransactionModel {
     required this.status,
     required this.description,
     this.referenceId,
+    this.bankName,
+    this.ifscCode,
+    this.accountHolderName,
     required this.createdAt,
   });
 
@@ -25,6 +31,9 @@ class TransactionModel {
       status: json['status'] ?? 'PENDING',
       description: json['description'] ?? '',
       referenceId: json['referenceId'],
+      bankName: json['bankName'],
+      ifscCode: json['ifscCode'],
+      accountHolderName: json['accountHolderName'],
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : DateTime.now(),

@@ -498,6 +498,7 @@ export default function App() {
                     <th>User</th>
                     <th>Email</th>
                     <th>Amount Requested</th>
+                    <th>Bank Details</th>
                     <th>Requested Date</th>
                     <th>Status</th>
                     <th>Actions</th>
@@ -509,6 +510,17 @@ export default function App() {
                       <td>{tx.userId?.username}</td>
                       <td>{tx.userId?.email}</td>
                       <td style={{ color: '#ef4444', fontWeight: 'bold' }}>₹{Math.abs(tx.amount).toFixed(2)}</td>
+                      <td style={{ fontSize: '0.85rem', color: '#e2e8f0' }}>
+                        {tx.bankName ? (
+                          <div>
+                            <div><span style={{ color: '#64748b' }}>Holder:</span> {tx.accountHolderName}</div>
+                            <div><span style={{ color: '#64748b' }}>Bank:</span> {tx.bankName}</div>
+                            <div><span style={{ color: '#64748b' }}>IFSC:</span> {tx.ifscCode}</div>
+                          </div>
+                        ) : (
+                          <span style={{ color: '#64748b' }}>N/A (Legacy)</span>
+                        )}
+                      </td>
                       <td>{new Date(tx.createdAt).toLocaleString()}</td>
                       <td>
                         <span className={`badge badge-${tx.status.toLowerCase()}`}>{tx.status}</span>

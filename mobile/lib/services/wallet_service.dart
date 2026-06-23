@@ -39,7 +39,12 @@ class WalletService {
     }
   }
 
-  Future<Map<String, dynamic>> withdraw(double amount) async {
+  Future<Map<String, dynamic>> withdraw({
+    required double amount,
+    required String bankName,
+    required String ifscCode,
+    required String accountHolderName,
+  }) async {
     try {
       final token = await _authService.getToken();
       final response = await http.post(
@@ -48,7 +53,12 @@ class WalletService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: jsonEncode({'amount': amount}),
+        body: jsonEncode({
+          'amount': amount,
+          'bankName': bankName,
+          'ifscCode': ifscCode,
+          'accountHolderName': accountHolderName,
+        }),
       );
 
       final data = jsonDecode(response.body);

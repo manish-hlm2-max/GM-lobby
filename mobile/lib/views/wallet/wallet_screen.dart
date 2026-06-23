@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/wallet_provider.dart';
 import 'deposit_screen.dart';
+import 'withdrawal_screen.dart';
 
 class WalletScreen extends ConsumerStatefulWidget {
   const WalletScreen({super.key});
@@ -231,7 +232,12 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => _showTransactionSheet(false),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const WithdrawalScreen()),
+                      );
+                    },
                     icon: const Icon(Icons.arrow_upward_rounded, color: Colors.teal),
                     label: const Text('Withdraw', style: TextStyle(color: Colors.teal)),
                     style: OutlinedButton.styleFrom(

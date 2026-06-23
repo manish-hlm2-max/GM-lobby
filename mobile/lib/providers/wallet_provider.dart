@@ -59,9 +59,19 @@ class WalletNotifier extends StateNotifier<WalletState> {
     }
   }
 
-  Future<bool> withdraw(double amount) async {
+  Future<bool> withdraw({
+    required double amount,
+    required String bankName,
+    required String ifscCode,
+    required String accountHolderName,
+  }) async {
     state = state.copyWith(isLoading: true, error: null);
-    final res = await _walletService.withdraw(amount);
+    final res = await _walletService.withdraw(
+      amount: amount,
+      bankName: bankName,
+      ifscCode: ifscCode,
+      accountHolderName: accountHolderName,
+    );
     if (res['success'] == true) {
       ref.read(authProvider.notifier).updateWallet(
         WalletModel(balance: res['balance'], lockedBalance: res['lockedBalance']),

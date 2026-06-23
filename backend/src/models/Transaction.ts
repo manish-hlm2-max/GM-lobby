@@ -10,6 +10,9 @@ export interface ITransaction extends Document {
   status: TransactionStatus;
   description: string;
   referenceId?: string; // e.g. Match ID, Tournament ID, Withdrawal ref
+  bankName?: string;
+  ifscCode?: string;
+  accountHolderName?: string;
   createdAt: Date;
 }
 
@@ -20,6 +23,9 @@ const TransactionSchema = new Schema<ITransaction>({
   status: { type: String, enum: ['PENDING', 'SUCCESS', 'FAILED'], default: 'PENDING' },
   description: { type: String, required: true },
   referenceId: { type: String },
+  bankName: { type: String },
+  ifscCode: { type: String },
+  accountHolderName: { type: String },
   createdAt: { type: Date, default: Date.now },
 });
 

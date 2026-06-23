@@ -74,9 +74,14 @@ router.post('/deposit', authMiddleware, async (req: AuthRequest, res: Response):
 // 2. Request Withdrawal
 router.post('/withdraw', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { amount } = req.body;
+    const { amount, bankName, ifscCode, accountHolderName } = req.body;
     if (!amount || amount <= 0) {
       res.status(400).json({ success: false, error: 'Amount must be positive.' });
+      return;
+    }
+
+    if (!bankName || !ifscCode || !accountHolderName) {
+      res.status(400).json({ success: false, error: 'Bank name, IFSC code, and account holder name are required.' });
       return;
     }
 
@@ -111,7 +116,10 @@ router.post('/withdraw', authMiddleware, async (req: AuthRequest, res: Response)
         amount: -amount,
         type: 'WITHDRAWAL',
         status: 'PENDING',
-        description: 'Withdrawal request pending administrative approval.',
+        description: `Withdrawal request to ${bankName} (${accountHolderName})`,
+        bankName,
+        ifscCode,
+        accountHolderName,
       });
       await transaction.save(session ? { session } : {});
 
