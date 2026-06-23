@@ -171,6 +171,90 @@ router.post('/login', async (req, res: Response): Promise<void> => {
   }
 });
 
+// Google / Gmail Auth (Login or Signup)
+router.post('/google', async (req, res: Response): Promise<void> => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      res.status(400).json({ success: false, error: 'Email is required.' });
+      return;
+    }
+
+    // Find if user already exists
+    let user = await User.findOne({
+      email: { $regex: new RegExp(`^${email.trim()}$`, 'i') }
+    });
+
+    let isNewUser = false;
+    if (!user) {
+      isNewUser = true;
+      
+      // Auto-generate a unique username based on email username prefix
+      let baseUsername = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '');
+      if (baseUsername.length < 3) baseUsername = 'user';
+      
+      let username = baseUsername;
+      let counter = 1;
+      while (await User.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } })) {
+        username = `${baseUsername}${counter}`;
+        counter++;
+      }
+
+      // Generate secure random password
+      const salt = await bcrypt.genSalt(10);
+      const passwordHash = await bcrypt.hash(Math.random().toString(36).substring(2, 10), salt);
+
+      // Create new user
+      user = new User({
+        email: email.trim(),
+        username: username,
+        passwordHash: passwordHash,
+        phoneNumber: '',
+        elo: 1200,
+      });
+      await user.save();
+
+      // Create user wallet
+      const newWallet = new Wallet({
+        userId: user._id,
+        balance: 0,
+        lockedBalance: 0,
+      });
+      await newWallet.save();
+    }
+
+    // Check block status
+    if (user.isBlocked) {
+      res.status(403).json({ success: false, error: 'Forbidden. Your account has been blocked.' });
+      return;
+    }
+
+    // Generate JWT
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.status(isNewUser ? 201 : 200).json({
+      success: true,
+      token,
+      user: {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+        phoneNumber: user.phoneNumber || '',
+        elo: user.elo,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error('Google login error:', error);
+    res.status(500).json({ success: false, error: 'Server error during Google login.' });
+  }
+});
+
 // Get Current User Profile & Wallet Details
 router.get('/me', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {

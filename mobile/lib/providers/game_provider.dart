@@ -81,7 +81,47 @@ class GameNotifier extends StateNotifier<GameState> {
 
   void makeMove(String from, String to, {String? promotion}) {
     if (state.currentMatch == null) return;
-    _socketService.makeMove(state.currentMatch!.id, from, to, promotion: promotion);
+    final match = state.currentMatch!;
+    
+    // 1. Local Optimistic Update
+    try {
+      final chess = ChessDart.Chess.fromFEN(match.boardFen);
+      
+      final success = chess.move({
+        'from': from,
+        'to': to,
+        if (promotion != null) 'promotion': promotion,
+      });
+      
+      if (success) {
+        final lastMoveSan = chess.getHistory().last;
+        
+        final newHistoryItem = {
+          'from': from,
+          'to': to,
+          'san': lastMoveSan,
+          if (promotion != null) 'promotion': promotion,
+          'createdAt': DateTime.now().toUtc().toIso8601String(),
+        };
+        
+        final updatedMatch = match.copyWith(
+          boardFen: chess.fen,
+          moveHistory: [...match.moveHistory, newHistoryItem],
+        );
+        
+        state = state.copyWith(
+          currentMatch: updatedMatch,
+          isMyTurn: false, // Optimistically hand turn over
+          error: null,
+        );
+      }
+    } catch (e) {
+      // Fallback/log local prediction error silently and let the socket resolve it
+      print("Optimistic update error: $e");
+    }
+
+    // 2. Server Sync
+    _socketService.makeMove(match.id, from, to, promotion: promotion);
   }
 
   void resign() {

@@ -141,12 +141,29 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     children: [
                       // Logo Icon
                       Center(
-                        child: Text(
-                          '♚',
-                          style: TextStyle(
-                            fontSize: 86,
-                            color: Colors.amber[400],
-                            height: 1.0,
+                        child: Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(22),
+                            border: Border.all(
+                              color: Colors.amber[400]!.withOpacity(0.4),
+                              width: 2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.amber[400]!.withOpacity(0.15),
+                                blurRadius: 16,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: Image.asset(
+                              'assets/logo.png',
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
                       ),
@@ -304,6 +321,66 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                                       ),
                                     ),
                             ),
+                            const SizedBox(height: 20),
+                            Row(
+                              children: [
+                                Expanded(child: Divider(color: Colors.white.withOpacity(0.1))),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                                  child: Text(
+                                    'OR CONTINUE WITH',
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white38,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.0,
+                                    ),
+                                  ),
+                                ),
+                                Expanded(child: Divider(color: Colors.white.withOpacity(0.1))),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            OutlinedButton(
+                              onPressed: state.isLoading ? null : _showGoogleAccountChooser,
+                              style: OutlinedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: Colors.black87,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                side: BorderSide.none,
+                                elevation: 2,
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    width: 20,
+                                    height: 20,
+                                    margin: const EdgeInsets.only(right: 12),
+                                    child: Image.network(
+                                      'https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.png',
+                                      errorBuilder: (context, error, stackTrace) => Text(
+                                        'G',
+                                        style: GoogleFonts.outfit(
+                                          fontWeight: FontWeight.w900,
+                                          color: Colors.blue[700],
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    'Continue with Gmail',
+                                    style: GoogleFonts.inter(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -390,5 +467,284 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
   RoundedRectangleBorder RoundedCornerShape(double radius) {
     return RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius));
+  }
+
+  void _showGoogleAccountChooser() {
+    final emailController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool isSubmitting = false;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              margin: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(color: Colors.white.withOpacity(0.08), width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.5),
+                    blurRadius: 20,
+                    offset: const Offset(0, -5),
+                  ),
+                ],
+              ),
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 24,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              ),
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Handle line
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    // Header with google logo
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 22,
+                          height: 22,
+                          margin: const EdgeInsets.only(right: 10),
+                          child: Image.network(
+                            'https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.png',
+                            errorBuilder: (context, error, stackTrace) => const Icon(
+                              Icons.account_circle,
+                              color: Colors.tealAccent,
+                              size: 22,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          'Sign in with Google',
+                          style: GoogleFonts.outfit(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Choose an account to continue to Grandmaster Lobby',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: Colors.white54,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    if (isSubmitting) ...[
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 30),
+                          child: CircularProgressIndicator(color: Colors.tealAccent),
+                        ),
+                      ),
+                    ] else ...[
+                      // Pre-saved account 1
+                      _buildAccountTile(
+                        context,
+                        'painl@gmail.com',
+                        'Pain L',
+                        'https://api.dicebear.com/7.x/bottts/png?seed=Pain',
+                        setModalState,
+                        (email) async {
+                          setModalState(() { isSubmitting = true; });
+                          final success = await ref.read(authProvider.notifier).loginWithGoogle(email);
+                          if (success && mounted) {
+                            Navigator.pop(context);
+                          } else {
+                            setModalState(() { isSubmitting = false; });
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      // Pre-saved account 2
+                      _buildAccountTile(
+                        context,
+                        'player2077@gmail.com',
+                        'Cyber Player',
+                        'https://api.dicebear.com/7.x/bottts/png?seed=Cyber',
+                        setModalState,
+                        (email) async {
+                          setModalState(() { isSubmitting = true; });
+                          final success = await ref.read(authProvider.notifier).loginWithGoogle(email);
+                          if (success && mounted) {
+                            Navigator.pop(context);
+                          } else {
+                            setModalState(() { isSubmitting = false; });
+                          }
+                        },
+                      ),
+                      const Divider(color: Colors.white10, height: 24),
+                      // Custom Email Input Field
+                      Text(
+                        'Use another account',
+                        style: GoogleFonts.inter(
+                          color: Colors.white70,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: emailController,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          labelText: 'Gmail Address',
+                          labelStyle: const TextStyle(color: Colors.white38, fontSize: 13),
+                          prefixIcon: const Icon(Icons.mail_outline, color: Colors.white38, size: 20),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          filled: true,
+                          fillColor: Colors.white.withOpacity(0.02),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Colors.tealAccent),
+                          ),
+                          errorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Colors.redAccent),
+                          ),
+                          focusedErrorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Colors.redAccent),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter an email';
+                          }
+                          if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                            return 'Please enter a valid email';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: () async {
+                          if (formKey.currentState!.validate()) {
+                            setModalState(() { isSubmitting = true; });
+                            final email = emailController.text.trim();
+                            final success = await ref.read(authProvider.notifier).loginWithGoogle(email);
+                            if (success && mounted) {
+                              Navigator.pop(context);
+                            } else {
+                              setModalState(() { isSubmitting = false; });
+                            }
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.tealAccent[400],
+                          foregroundColor: Colors.black87,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text(
+                          'SIGN IN',
+                          style: GoogleFonts.inter(fontWeight: FontWeight.bold, letterSpacing: 1.0),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    Text(
+                      'To continue, Google will share your name, email address, language preference, and profile picture with Grandmaster Lobby.',
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        color: Colors.white30,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildAccountTile(
+    BuildContext context,
+    String email,
+    String name,
+    String avatarUrl,
+    StateSetter setModalState,
+    Function(String) onTap,
+  ) {
+    return InkWell(
+      onTap: () => onTap(email),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.02),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withOpacity(0.04)),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: Colors.white10,
+              backgroundImage: NetworkImage(avatarUrl),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                  Text(
+                    email,
+                    style: GoogleFonts.inter(
+                      color: Colors.white38,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white30, size: 14),
+          ],
+        ),
+      ),
+    );
   }
 }

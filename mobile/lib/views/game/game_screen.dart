@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:chess/chess.dart' as ChessDart;
@@ -213,6 +214,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           promotion: promotion,
         );
 
+        HapticFeedback.lightImpact();
+
         setState(() {
           _selectedSquare = null;
           _legalMoves = [];
@@ -259,9 +262,330 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     }
   }
 
+  void _showResultDialog(BuildContext context, MatchModel match, String? currentUserId) {
+    final isDraw = match.result == 'DRAW';
+    final isWinner = match.winnerId == currentUserId;
+    
+    String titleText;
+    String statusText;
+    Color statusColor;
+    String description;
+    String icon;
+    List<Color> gradientColors;
+    
+    if (isDraw) {
+      titleText = 'DRAW';
+      statusText = 'Draw Match';
+      statusColor = Colors.orangeAccent;
+      description = 'Match ended in a draw. Both players fought well!';
+      icon = '🤝';
+      gradientColors = [const Color(0xFF2C3E50), const Color(0xFF3498DB)];
+    } else if (isWinner) {
+      titleText = 'VICTORY';
+      statusText = 'You Won!';
+      statusColor = const Color(0xFF4ADE80);
+      description = 'Congratulations on your spectacular win!';
+      icon = '🏆';
+      gradientColors = [const Color(0xFF134E5E), const Color(0xFF71B280)];
+    } else {
+      titleText = 'DEFEAT';
+      statusText = 'You Lost';
+      statusColor = Colors.redAccent;
+      description = 'Better luck next time! Keep practicing.';
+      icon = '😞';
+      gradientColors = [const Color(0xFF430000), const Color(0xFF9E1010)];
+    }
+
+    final winnerName = match.winnerId == match.whitePlayerId
+        ? (match.whiteUsername ?? 'White Player')
+        : (match.blackUsername ?? 'Black Player');
+        
+    final loserName = match.winnerId == match.whitePlayerId
+        ? (match.blackUsername ?? 'Black Player')
+        : (match.whiteUsername ?? 'White Player');
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Result Dialog',
+      barrierColor: Colors.black.withOpacity(0.75),
+      transitionDuration: const Duration(milliseconds: 400),
+      pageBuilder: (context, anim1, anim2) => const SizedBox.shrink(),
+      transitionBuilder: (context, anim1, anim2, child) {
+        return Transform.scale(
+          scale: Curves.easeInOutBack.transform(anim1.value),
+          child: FadeTransition(
+            opacity: anim1,
+            child: AlertDialog(
+              backgroundColor: Colors.transparent,
+              contentPadding: EdgeInsets.zero,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+              content: Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [
+                      Color(0xFF1F2937),
+                      Color(0xFF111827),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: statusColor.withOpacity(0.3),
+                    width: 2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: statusColor.withOpacity(0.15),
+                      blurRadius: 24,
+                      spreadRadius: 4,
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Glowing Icon Container
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: gradientColors,
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: statusColor.withOpacity(0.4),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          icon,
+                          style: const TextStyle(fontSize: 40),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    // Result title
+                    Text(
+                      titleText,
+                      style: GoogleFonts.outfit(
+                        color: statusColor,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      statusText,
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Player details card
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.04),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white.withOpacity(0.08)),
+                      ),
+                      child: Column(
+                        children: [
+                          if (!isDraw) ...[
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Winner',
+                                  style: GoogleFonts.inter(color: Colors.white54, fontSize: 13),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    winnerName,
+                                    textAlign: TextAlign.end,
+                                    style: GoogleFonts.inter(
+                                      color: const Color(0xFF4ADE80),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Divider(color: Colors.white10, height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Runner-up',
+                                  style: GoogleFonts.inter(color: Colors.white54, fontSize: 13),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    loserName,
+                                    textAlign: TextAlign.end,
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white70,
+                                      fontSize: 14,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ] else ...[
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'White Player',
+                                  style: GoogleFonts.inter(color: Colors.white54, fontSize: 13),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    match.whiteUsername ?? 'White',
+                                    textAlign: TextAlign.end,
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Divider(color: Colors.white10, height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Black Player',
+                                  style: GoogleFonts.inter(color: Colors.white54, fontSize: 13),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    match.blackUsername ?? 'Black',
+                                    textAlign: TextAlign.end,
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (match.prizePool > 0) ...[
+                            const Divider(color: Colors.white10, height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Prize Pool',
+                                  style: GoogleFonts.inter(color: Colors.white54, fontSize: 13),
+                                ),
+                                Text(
+                                  '₹${match.prizePool.toStringAsFixed(0)}',
+                                  style: GoogleFonts.outfit(
+                                    color: const Color(0xFFFFD700),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      description,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        color: Colors.white54,
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    // Action button
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: statusColor,
+                        foregroundColor: Colors.white,
+                        shadowColor: statusColor.withOpacity(0.5),
+                        elevation: 8,
+                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      child: Text(
+                        'Close',
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+
+    // Listen for turn transitions to trigger haptics and game over dialog
+    ref.listen<GameState>(gameProvider, (previous, next) {
+      if (next.currentMatch != null) {
+        if (previous != null) {
+          final wasMyTurn = previous.isMyTurn;
+          final isMyTurnNow = next.isMyTurn;
+          if (!wasMyTurn && isMyTurnNow && next.currentMatch!.status == 'RUNNING') {
+            HapticFeedback.vibrate();
+          }
+        }
+        if (next.currentMatch!.status == 'COMPLETED') {
+          final prevStatus = previous?.currentMatch?.status;
+          if (prevStatus != 'COMPLETED') {
+            _showResultDialog(context, next.currentMatch!, authState.user?.id);
+          }
+        }
+      }
+    });
+
     final gameState = ref.watch(gameProvider);
     final match = gameState.currentMatch;
 
@@ -576,6 +900,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
             ),
           ),
 
+          // Player moves row
+          _buildMovesRow(playerMoves, isPlayer: true),
+
           // Player info bar
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -646,9 +973,6 @@ class _GameScreenState extends ConsumerState<GameScreen> {
               ],
             ),
           ),
-
-          // Player moves row
-          _buildMovesRow(playerMoves, isPlayer: true),
 
           // Game result banner
           if (match.status == 'COMPLETED')

@@ -4,66 +4,102 @@ import bcrypt from 'bcryptjs';
 
 const INDIAN_BOTS = [
   { username: 'Aarav_Chess', elo: 2580 },
-  { username: 'Aditya_GM', elo: 2620 },
-  { username: 'Vihaan_Grandmaster', elo: 2650 },
-  { username: 'Arjun_Chess_GM', elo: 2540 },
-  { username: 'Sai_Pranith_GM', elo: 2490 },
-  { username: 'Pranav_Karthik_GM', elo: 2610 },
-  { username: 'Kabir_Chess_GM', elo: 2470 },
-  { username: 'Rohan_Mehta_GM', elo: 2530 },
-  { username: 'Vivaan_Sharma_GM', elo: 2560 },
-  { username: 'Reyansh_GM', elo: 2605 },
-  { username: 'Dia_Sen_GM', elo: 2450 },
-  { username: 'Ananya_Iyer_GM', elo: 2485 },
-  { username: 'Ishaan_Gupta_GM', elo: 2520 },
-  { username: 'Krishna_GM', elo: 2595 },
-  { username: 'Shaurya_Singh_GM', elo: 2630 },
-  { username: 'Atharv_Patel_GM', elo: 2505 },
-  { username: 'Siddharth_GM', elo: 2570 },
-  { username: 'Rudransh_Verma_GM', elo: 2465 },
-  { username: 'Aarush_GM', elo: 2515 },
-  { username: 'Kavya_Reddy_GM', elo: 2495 },
-  { username: 'Mira_Nair_GM', elo: 2480 },
-  { username: 'Zoya_Khan_GM', elo: 2525 },
-  { username: 'Myra_Joshi_GM', elo: 2510 },
-  { username: 'Kiara_Bhasin_GM', elo: 2460 },
-  { username: 'Siya_Dave_GM', elo: 2475 },
-  { username: 'Saanvi_Choudhury_GM', elo: 2545 },
-  { username: 'Riya_Bose_GM', elo: 2490 },
-  { username: 'Priya_GM', elo: 2500 },
-  { username: 'Divya_Grandmaster', elo: 2555 },
-  { username: 'Nisha_GM', elo: 2460 },
-  { username: 'Aman_Verma_GM', elo: 2510 },
-  { username: 'Rahul_Grandmaster', elo: 2600 },
-  { username: 'Sumit_Chess_GM', elo: 2515 },
-  { username: 'Amit_GM', elo: 2520 },
-  { username: 'Vikram_Rathore_GM', elo: 2585 },
-  { username: 'Ravi_Kumar_GM', elo: 2500 },
-  { username: 'Rajesh_GM', elo: 2490 },
-  { username: 'Sanjay_GM', elo: 2510 },
-  { username: 'Ajay_Chess_GM', elo: 2525 },
-  { username: 'Vijay_GM', elo: 2530 },
-  { username: 'Karan_GM', elo: 2540 },
-  { username: 'Deepak_GM', elo: 2505 },
-  { username: 'Sunil_GM', elo: 2495 },
-  { username: 'Anil_GM', elo: 2480 },
-  { username: 'Manoj_GM', elo: 2500 },
-  { username: 'Sandip_GM', elo: 2470 },
-  { username: 'Rakesh_GM', elo: 2515 },
-  { username: 'Yash_Grandmaster', elo: 2640 },
-  { username: 'Dev_Chess_GM', elo: 2575 },
-  { username: 'Harsh_GM', elo: 2550 },
+  { username: 'Aditya', elo: 2620 },
+  { username: 'Vihaan', elo: 2650 },
+  { username: 'Arjun_Chess', elo: 2540 },
+  { username: 'Sai_Pranith', elo: 2490 },
+  { username: 'Pranav_Karthik', elo: 2610 },
+  { username: 'Kabir_Chess', elo: 2470 },
+  { username: 'Rohan_Mehta', elo: 2530 },
+  { username: 'Vivaan_Sharma', elo: 2560 },
+  { username: 'Reyansh', elo: 2605 },
+  { username: 'Dia_Sen', elo: 2450 },
+  { username: 'Ananya_Iyer', elo: 2485 },
+  { username: 'Ishaan_Gupta', elo: 2520 },
+  { username: 'Krishna', elo: 2595 },
+  { username: 'Shaurya_Singh', elo: 2630 },
+  { username: 'Atharv_Patel', elo: 2505 },
+  { username: 'Siddharth', elo: 2570 },
+  { username: 'Rudransh_Verma', elo: 2465 },
+  { username: 'Aarush', elo: 2515 },
+  { username: 'Kavya_Reddy', elo: 2495 },
+  { username: 'Mira_Nair', elo: 2480 },
+  { username: 'Zoya_Khan', elo: 2525 },
+  { username: 'Myra_Joshi', elo: 2510 },
+  { username: 'Kiara_Bhasin', elo: 2460 },
+  { username: 'Siya_Dave', elo: 2475 },
+  { username: 'Saanvi_Choudhury', elo: 2545 },
+  { username: 'Riya_Bose', elo: 2490 },
+  { username: 'Priya', elo: 2500 },
+  { username: 'Divya', elo: 2555 },
+  { username: 'Nisha', elo: 2460 },
+  { username: 'Aman_Verma', elo: 2510 },
+  { username: 'Rahul', elo: 2600 },
+  { username: 'Sumit_Chess', elo: 2515 },
+  { username: 'Amit', elo: 2520 },
+  { username: 'Vikram_Rathore', elo: 2585 },
+  { username: 'Ravi_Kumar', elo: 2500 },
+  { username: 'Rajesh', elo: 2490 },
+  { username: 'Sanjay', elo: 2510 },
+  { username: 'Ajay_Chess', elo: 2525 },
+  { username: 'Vijay', elo: 2530 },
+  { username: 'Karan', elo: 2540 },
+  { username: 'Deepak', elo: 2505 },
+  { username: 'Sunil', elo: 2495 },
+  { username: 'Anil', elo: 2480 },
+  { username: 'Manoj', elo: 2500 },
+  { username: 'Sandip', elo: 2470 },
+  { username: 'Rakesh', elo: 2515 },
+  { username: 'Yash', elo: 2640 },
+  { username: 'Dev_Chess', elo: 2575 },
+  { username: 'Harsh', elo: 2550 },
 ];
 
 export const seedBots = async (): Promise<void> => {
   try {
+    // 1. Rename existing bots in the database to remove GM/Grandmaster suffixes
+    const bots = await User.find({ isBot: true });
+    for (const bot of bots) {
+      let updatedUsername = bot.username
+        .replace(/_GM$/i, '')
+        .replace(/_Grandmaster$/i, '')
+        .replace(/Grandmaster$/i, '')
+        .replace(/GM$/i, '');
+      
+      if (updatedUsername !== bot.username) {
+        // Resolve potential duplicate username collision gracefully
+        const taken = await User.findOne({ 
+          username: { $regex: new RegExp(`^${updatedUsername}$`, 'i') },
+          _id: { $ne: bot._id }
+        });
+        
+        if (taken) {
+          let counter = 1;
+          let tempUsername = updatedUsername;
+          while (await User.findOne({ 
+            username: { $regex: new RegExp(`^${tempUsername}$`, 'i') },
+            _id: { $ne: bot._id }
+          })) {
+            tempUsername = `${updatedUsername}${counter}`;
+            counter++;
+          }
+          updatedUsername = tempUsername;
+        }
+
+        console.log(`Renaming bot: ${bot.username} -> ${updatedUsername}`);
+        bot.username = updatedUsername;
+        bot.email = `${updatedUsername.toLowerCase()}@chessbots.com`;
+        await bot.save();
+      }
+    }
+
     const botsCount = await User.countDocuments({ isBot: true });
     if (botsCount >= 50) {
-      console.log('50 Grandmaster bots already seeded.');
+      console.log('50 bots already seeded.');
       return;
     }
 
-    console.log(`Seeding GM bots... Current count: ${botsCount}`);
+    console.log(`Seeding bots... Current count: ${botsCount}`);
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash('bot_no_pass_login_xyz_123', salt);
 
@@ -107,7 +143,7 @@ export const seedBots = async (): Promise<void> => {
       await newWallet.save();
     }
 
-    console.log('Successfully seeded 50 Grandmaster bots with real Indian usernames.');
+    console.log('Successfully seeded 50 bots with real Indian usernames.');
   } catch (error) {
     console.error('Error seeding bots:', error);
   }

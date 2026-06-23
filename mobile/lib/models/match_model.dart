@@ -57,4 +57,38 @@ class MatchModel {
       createdAt: json['createdAt']?.toString(),
     );
   }
+
+  MatchModel copyWith({
+    String? id,
+    String? whitePlayerId,
+    String? blackPlayerId,
+    String? whiteUsername,
+    String? blackUsername,
+    double? entryFee,
+    double? prizePool,
+    int? timeControl,
+    String? status,
+    String? boardFen,
+    List<dynamic>? moveHistory,
+    String? result,
+    String? winnerId,
+    String? createdAt,
+  }) {
+    return MatchModel(
+      id: id ?? this.id,
+      whitePlayerId: whitePlayerId ?? this.whitePlayerId,
+      blackPlayerId: blackPlayerId ?? this.blackPlayerId,
+      whiteUsername: whiteUsername ?? this.whiteUsername,
+      blackUsername: blackUsername ?? this.blackUsername,
+      entryFee: entryFee ?? this.entryFee,
+      prizePool: prizePool ?? this.prizePool,
+      timeControl: timeControl ?? this.timeControl,
+      status: status ?? this.status,
+      boardFen: boardFen ?? this.boardFen,
+      moveHistory: moveHistory ?? this.moveHistory,
+      result: result ?? this.result,
+      winnerId: winnerId ?? this.winnerId,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
 }
