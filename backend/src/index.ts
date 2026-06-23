@@ -13,6 +13,7 @@ import walletRoutes from './routes/wallet';
 import matchRoutes from './routes/match';
 import tournamentRoutes from './routes/tournament';
 import { setupGameSocket, startTournamentScheduler } from './sockets/gameSocket';
+import { User } from './models/User';
 
 dotenv.config();
 
@@ -80,6 +81,21 @@ const PORT = process.env.PORT || 3000;
 const startServer = async () => {
   await connectDB();
   
+  // Auto-promote testing accounts to SUPER_ADMIN
+  try {
+    const res = await User.updateMany(
+      { email: { $in: ['painl@gmail.com', 'player2077@gmail.com'] } },
+      { $set: { role: 'SUPER_ADMIN' } }
+    );
+    if (res.modifiedCount > 0) {
+      console.log(`Auto-promoted ${res.modifiedCount} accounts to SUPER_ADMIN.`);
+    } else {
+      console.log('Testing accounts are already set as SUPER_ADMIN.');
+    }
+  } catch (err) {
+    console.error('Failed to auto-promote testing accounts:', err);
+  }
+
   // Bind Socket connections
   setupGameSocket(io);
   startTournamentScheduler(io);

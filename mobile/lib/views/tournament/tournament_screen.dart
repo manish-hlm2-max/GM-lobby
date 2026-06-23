@@ -30,7 +30,7 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
     final authState = ref.watch(authProvider);
     final lobbyState = ref.watch(lobbyProvider);
     final userId = authState.user?.id;
-    final isAdmin = authState.user?.role == 'ADMIN';
+    final isAdmin = authState.user?.role == 'SUPER_ADMIN' || authState.user?.role == 'MODERATOR' || authState.user?.role == 'ADMIN';
 
     return Scaffold(
       backgroundColor: const Color(0xFF030712),
