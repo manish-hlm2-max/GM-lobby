@@ -7,6 +7,8 @@ import '../models/wallet_model.dart';
 
 class AuthService {
   static const String _tokenKey = 'auth_token';
+  static const String _userKey = 'cached_user';
+  static const String _walletKey = 'cached_wallet';
 
   Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -21,6 +23,51 @@ class AuthService {
   Future<void> clearToken() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
+    await clearCache();
+  }
+
+  Future<UserModel?> getCachedUser() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString(_userKey);
+      if (jsonStr == null) return null;
+      return UserModel.fromJson(jsonDecode(jsonStr));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> cacheUser(UserModel user) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_userKey, jsonEncode(user.toJson()));
+    } catch (_) {}
+  }
+
+  Future<WalletModel?> getCachedWallet() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString(_walletKey);
+      if (jsonStr == null) return null;
+      return WalletModel.fromJson(jsonDecode(jsonStr));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> cacheWallet(WalletModel wallet) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_walletKey, jsonEncode(wallet.toJson()));
+    } catch (_) {}
+  }
+
+  Future<void> clearCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_userKey);
+      await prefs.remove(_walletKey);
+    } catch (_) {}
   }
 
   Future<Map<String, dynamic>> login(String emailOrUsername, String password) async {
@@ -192,18 +239,37 @@ class AuthService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(const Duration(seconds: 15));
 
       final data = jsonDecode(response.body);
       if (response.statusCode == 200 && data['success'] == true) {
+        final user = UserModel.fromJson(data['user']);
+        final wallet = WalletModel.fromJson(data['wallet']);
+        await cacheUser(user);
+        await cacheWallet(wallet);
+
         return {
-          'user': UserModel.fromJson(data['user']),
-          'wallet': WalletModel.fromJson(data['wallet']),
+          'success': true,
+          'user': user,
+          'wallet': wallet,
         };
       }
-      return null;
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        return {
+          'success': false,
+          'unauthorized': true,
+        };
+      }
+      return {
+        'success': false,
+        'unauthorized': false,
+      };
     } catch (e) {
-      return null;
+      return {
+        'success': false,
+        'unauthorized': false,
+        'error': e.toString(),
+      };
     }
   }
 

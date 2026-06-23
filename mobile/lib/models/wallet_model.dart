@@ -13,4 +13,11 @@ class WalletModel {
       lockedBalance: (json['lockedBalance'] as num?)?.toDouble() ?? 0.0,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'balance': balance,
+      'lockedBalance': lockedBalance,
+    };
+  }
 }

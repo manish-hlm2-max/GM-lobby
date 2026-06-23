@@ -39,12 +39,29 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> checkAuth() async {
-    state = state.copyWith(isLoading: true);
+    // Load cached session immediately so app opens instantly without loading indicator
+    final cachedUser = await _authService.getCachedUser();
+    final cachedWallet = await _authService.getCachedWallet();
+    if (cachedUser != null && cachedWallet != null) {
+      state = AuthState(user: cachedUser, wallet: cachedWallet, isLoading: false);
+    } else {
+      state = state.copyWith(isLoading: true);
+    }
+
+    // Fetch fresh profile in background
     final data = await _authService.getMe();
     if (data != null) {
-      state = AuthState(user: data['user'], wallet: data['wallet']);
+      if (data['success'] == true) {
+        state = AuthState(user: data['user'], wallet: data['wallet'], isLoading: false);
+      } else if (data['unauthorized'] == true) {
+        // Token is invalid/expired: log out user
+        await logout();
+      }
     } else {
-      state = AuthState();
+      // If no token exists at all
+      if (cachedUser == null) {
+        state = AuthState();
+      }
     }
   }
 
