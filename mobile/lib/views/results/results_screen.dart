@@ -139,6 +139,8 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
       badgeText = 'LOST';
     }
 
+    final eloChange = isWhite ? match.whiteEloChange : match.blackEloChange;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -164,21 +166,38 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
               children: [
                 // Icon or status badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 18),
+                  width: 72,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                   decoration: BoxDecoration(
                     color: badgeColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: badgeColor.withOpacity(0.2), width: 1.5),
                   ),
-                  child: Center(
-                    child: Text(
-                      badgeText,
-                      style: GoogleFonts.outfit(
-                        color: badgeColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        badgeText,
+                        style: GoogleFonts.outfit(
+                          color: badgeColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
                       ),
-                    ),
+                      if (eloChange != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          eloChange > 0 ? '+$eloChange' : '$eloChange',
+                          style: GoogleFonts.outfit(
+                            color: eloChange > 0
+                                ? const Color(0xFF4ADE80)
+                                : (eloChange < 0 ? const Color(0xFFF87171) : Colors.white38),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 const SizedBox(width: 16),
