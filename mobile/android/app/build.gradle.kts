@@ -10,6 +10,7 @@ fun incrementPubspecVersion() {
     val lines = pubspecFile.readLines()
     var currentVersionCode = 1
     var currentVersionName = "1.0.0"
+    var newVersionCode = 2
 
     val updatedLines = lines.map { line ->
         if (line.trim().startsWith("version:")) {
@@ -22,7 +23,7 @@ fun incrementPubspecVersion() {
                     val versionCode = versionParts[1].toIntOrNull() ?: 1
                     currentVersionCode = versionCode
                     currentVersionName = versionName
-                    val newVersionCode = versionCode + 1
+                    newVersionCode = versionCode + 1
                     println("Auto-incrementing app version: $versionStr -> $versionName+$newVersionCode")
                     "version: $versionName+$newVersionCode"
                 } else {
