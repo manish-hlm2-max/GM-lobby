@@ -414,14 +414,37 @@ const concludeMatch = async (
       if (result === 'WHITE_WIN') scoreW = 1;
       if (result === 'BLACK_WIN') scoreW = 0;
 
-      const expectedW = 1 / (1 + Math.pow(10, (eloB - eloW) / 400));
-      const expectedB = 1 - expectedW;
-
       const scoreB = 1 - scoreW;
 
-      const K = 32;
-      const newEloW = Math.round(eloW + K * (scoreW - expectedW));
-      const newEloB = Math.round(eloB + K * (scoreB - expectedB));
+      // FIDE K-factor Rules
+      let kW = 20;
+      const gamesW = (whiteUser.wins || 0) + (whiteUser.losses || 0) + (whiteUser.draws || 0);
+      if (gamesW < 30) {
+        kW = 40;
+      } else if (eloW >= 2400) {
+        kW = 10;
+      }
+
+      let kB = 20;
+      const gamesB = (blackUser.wins || 0) + (blackUser.losses || 0) + (blackUser.draws || 0);
+      if (gamesB < 30) {
+        kB = 40;
+      } else if (eloB >= 2400) {
+        kB = 10;
+      }
+
+      // FIDE 400-Point Rule
+      let diff = eloB - eloW;
+      if (eloW < 2650 && eloB < 2650) {
+        if (diff > 400) diff = 400;
+        if (diff < -400) diff = -400;
+      }
+
+      const expectedW = 1 / (1 + Math.pow(10, diff / 400));
+      const expectedB = 1 - expectedW;
+
+      const newEloW = Math.max(100, Math.round(eloW + kW * (scoreW - expectedW)));
+      const newEloB = Math.max(100, Math.round(eloB + kB * (scoreB - expectedB)));
 
       whiteUser.elo = newEloW;
       blackUser.elo = newEloB;

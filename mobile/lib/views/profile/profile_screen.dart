@@ -140,13 +140,57 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Text(
-                      user?.username ?? 'Grandmaster',
-                      style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          if (user?.title != null && user!.title!.isNotEmpty)
+                            TextSpan(
+                              text: '${user.title} ',
+                              style: GoogleFonts.outfit(
+                                color: const Color(0xFFFFD700),
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          TextSpan(
+                            text: user?.username ?? 'Grandmaster',
+                            style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      textAlign: TextAlign.center,
                     ),
                     Text(
                       user?.email ?? 'player@chess.com',
                       style: GoogleFonts.inter(color: Colors.white38, fontSize: 13),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.teal.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.teal.withOpacity(0.2), width: 1.5),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.military_tech_rounded, color: Colors.teal[300], size: 16),
+                              const SizedBox(width: 6),
+                              Text(
+                                'ELO: ${user?.elo ?? 1200}',
+                                style: GoogleFonts.outfit(
+                                  color: Colors.tealAccent,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -349,9 +393,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                sUser.username,
-                                style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                              Text.rich(
+                                TextSpan(
+                                  children: [
+                                    if (sUser.title != null && sUser.title!.isNotEmpty)
+                                      TextSpan(
+                                        text: '${sUser.title} ',
+                                        style: GoogleFonts.inter(
+                                          color: const Color(0xFFFFD700),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    TextSpan(
+                                      text: sUser.username,
+                                      style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                    ),
+                                  ],
+                                ),
                               ),
                               Text(
                                 'ELO: ${sUser.elo}',
@@ -435,9 +494,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              friend.username,
-                              style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                            Text.rich(
+                              TextSpan(
+                                children: [
+                                  if (friend.title != null && friend.title!.isNotEmpty)
+                                    TextSpan(
+                                      text: '${friend.title} ',
+                                      style: GoogleFonts.inter(
+                                        color: const Color(0xFFFFD700),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  TextSpan(
+                                    text: friend.username,
+                                    style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                  ),
+                                ],
+                              ),
                             ),
                             const SizedBox(height: 2),
                             Text(

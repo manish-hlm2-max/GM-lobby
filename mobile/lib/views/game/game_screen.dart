@@ -459,14 +459,29 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
-                                  child: Text(
-                                    match.whiteUsername ?? 'White',
-                                    textAlign: TextAlign.end,
-                                    style: GoogleFonts.inter(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
+                                  child: Text.rich(
+                                    TextSpan(
+                                      children: [
+                                        if (match.whiteTitle != null && match.whiteTitle!.isNotEmpty)
+                                          TextSpan(
+                                            text: '${match.whiteTitle} ',
+                                            style: GoogleFonts.inter(
+                                              color: const Color(0xFFFFD700),
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        TextSpan(
+                                          text: match.whiteUsername ?? 'White',
+                                          style: GoogleFonts.inter(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
                                     ),
+                                    textAlign: TextAlign.end,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
@@ -482,14 +497,29 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
-                                  child: Text(
-                                    match.blackUsername ?? 'Black',
-                                    textAlign: TextAlign.end,
-                                    style: GoogleFonts.inter(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
+                                  child: Text.rich(
+                                    TextSpan(
+                                      children: [
+                                        if (match.blackTitle != null && match.blackTitle!.isNotEmpty)
+                                          TextSpan(
+                                            text: '${match.blackTitle} ',
+                                            style: GoogleFonts.inter(
+                                              color: const Color(0xFFFFD700),
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        TextSpan(
+                                          text: match.blackUsername ?? 'Black',
+                                          style: GoogleFonts.inter(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
                                     ),
+                                    textAlign: TextAlign.end,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
@@ -641,6 +671,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
     final opponentName = isWhitePlayer ? (match.blackUsername ?? 'Waiting...') : (match.whiteUsername ?? 'Waiting...');
     final myName = isWhitePlayer ? (match.whiteUsername ?? 'You') : (match.blackUsername ?? 'You');
+    final opponentTitle = isWhitePlayer ? match.blackTitle : match.whiteTitle;
+    final myTitle = isWhitePlayer ? match.whiteTitle : match.blackTitle;
     final myColor = isWhitePlayer ? 'White' : 'Black';
     final opponentColor = isWhitePlayer ? 'Black' : 'White';
 
@@ -717,9 +749,24 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          opponentName,
-                          style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                        Text.rich(
+                          TextSpan(
+                            children: [
+                              if (opponentTitle != null && opponentTitle.isNotEmpty)
+                                TextSpan(
+                                  text: '$opponentTitle ',
+                                  style: GoogleFonts.inter(
+                                    color: const Color(0xFFFFD700),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              TextSpan(
+                                text: opponentName,
+                                style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                              ),
+                            ],
+                          ),
                         ),
                         Text(
                           opponentColor,
@@ -935,9 +982,24 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          '$myName (You)',
-                          style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                        Text.rich(
+                          TextSpan(
+                            children: [
+                              if (myTitle != null && myTitle.isNotEmpty)
+                                TextSpan(
+                                  text: '$myTitle ',
+                                  style: GoogleFonts.inter(
+                                    color: const Color(0xFFFFD700),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              TextSpan(
+                                text: '$myName (You)',
+                                style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                              ),
+                            ],
+                          ),
                         ),
                         Text(
                           myColor,

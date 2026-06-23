@@ -14,6 +14,7 @@ export interface IUser extends Document {
   draws: number;
   role: 'USER' | 'MODERATOR' | 'SUPER_ADMIN';
   friends: Types.ObjectId[];
+  title?: string;
   createdAt: Date;
 }
 
@@ -31,6 +32,7 @@ const UserSchema = new Schema<IUser>({
   draws: { type: Number, default: 0 },
   role: { type: String, enum: ['USER', 'MODERATOR', 'SUPER_ADMIN'], default: 'USER' },
   friends: { type: [Schema.Types.ObjectId], ref: 'User', default: [] },
+  title: { type: String, default: '' },
   createdAt: { type: Date, default: Date.now },
 });
 

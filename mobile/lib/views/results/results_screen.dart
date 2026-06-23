@@ -111,6 +111,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
   Widget _buildMatchCard(MatchModel match, String? currentUserId) {
     final isWhite = match.whitePlayerId == currentUserId;
     final opponentName = isWhite ? (match.blackUsername ?? 'Bot') : (match.whiteUsername ?? 'Bot');
+    final opponentTitle = isWhite ? match.blackTitle : match.whiteTitle;
     
     // Determine winner details
     bool isWinner = false;
@@ -187,12 +188,28 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'vs $opponentName',
-                        style: GoogleFonts.outfit(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                      Text.rich(
+                        TextSpan(
+                          children: [
+                            const TextSpan(text: 'vs '),
+                            if (opponentTitle != null && opponentTitle.isNotEmpty)
+                              TextSpan(
+                                text: '$opponentTitle ',
+                                style: GoogleFonts.outfit(
+                                  color: const Color(0xFFFFD700),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            TextSpan(
+                              text: opponentName,
+                              style: GoogleFonts.outfit(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 4),

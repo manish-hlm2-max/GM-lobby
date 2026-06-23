@@ -237,9 +237,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Hello, ${authState.user?.username ?? "Player"}',
-                              style: GoogleFonts.outfit(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                            Text.rich(
+                              TextSpan(
+                                children: [
+                                  const TextSpan(text: 'Hello, '),
+                                  if (authState.user?.title != null && authState.user!.title!.isNotEmpty)
+                                    TextSpan(
+                                      text: '${authState.user!.title} ',
+                                      style: GoogleFonts.outfit(
+                                        color: const Color(0xFFFFD700),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 20,
+                                      ),
+                                    ),
+                                  TextSpan(
+                                    text: authState.user?.username ?? 'Player',
+                                    style: GoogleFonts.outfit(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -282,6 +300,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         final match = lobbyState.myActiveMatches[index];
                         final isWhite = match.whitePlayerId == authState.user?.id;
                         final opponent = isWhite ? (match.blackUsername ?? 'Waiting...') : (match.whiteUsername ?? 'Waiting...');
+                        final opponentTitle = isWhite ? match.blackTitle : match.whiteTitle;
                         final duration = match.timeControl ~/ 60;
 
                         return Container(
@@ -308,9 +327,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Text(
-                                      'vs $opponent',
-                                      style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                    Text.rich(
+                                      TextSpan(
+                                        children: [
+                                          const TextSpan(text: 'vs '),
+                                          if (opponentTitle != null && opponentTitle.isNotEmpty)
+                                            TextSpan(
+                                              text: '$opponentTitle ',
+                                              style: GoogleFonts.inter(
+                                                color: const Color(0xFFFFD700),
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          TextSpan(
+                                            text: opponent,
+                                            style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                          ),
+                                        ],
+                                      ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),

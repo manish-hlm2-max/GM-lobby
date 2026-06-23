@@ -8,6 +8,7 @@ class UserModel {
   final int losses;
   final int draws;
   final String role;
+  final String? title;
 
   UserModel({
     required this.id,
@@ -19,6 +20,7 @@ class UserModel {
     required this.losses,
     required this.draws,
     required this.role,
+    this.title,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -32,6 +34,9 @@ class UserModel {
       losses: json['losses'] ?? 0,
       draws: json['draws'] ?? 0,
       role: json['role'] ?? 'USER',
+      title: json['title'] != null && json['title'].toString().isNotEmpty
+          ? json['title'].toString()
+          : null,
     );
   }
 
@@ -46,6 +51,7 @@ class UserModel {
       'losses': losses,
       'draws': draws,
       'role': role,
+      'title': title,
     };
   }
 }

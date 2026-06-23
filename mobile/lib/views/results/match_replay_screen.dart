@@ -158,6 +158,8 @@ class _MatchReplayScreenState extends ConsumerState<MatchReplayScreen> {
     
     final opponentName = isWhitePlayer ? (widget.match.blackUsername ?? 'Opponent') : (widget.match.whiteUsername ?? 'Opponent');
     final myName = isWhitePlayer ? (widget.match.whiteUsername ?? 'You') : (widget.match.blackUsername ?? 'You');
+    final opponentTitle = isWhitePlayer ? widget.match.blackTitle : widget.match.whiteTitle;
+    final myTitle = isWhitePlayer ? widget.match.whiteTitle : widget.match.blackTitle;
     
     final chess = ChessDart.Chess.fromFEN(_currentFen);
 
@@ -194,9 +196,24 @@ class _MatchReplayScreenState extends ConsumerState<MatchReplayScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Text(
-                  opponentName,
-                  style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      if (opponentTitle != null && opponentTitle.isNotEmpty)
+                        TextSpan(
+                          text: '$opponentTitle ',
+                          style: GoogleFonts.inter(
+                            color: const Color(0xFFFFD700),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+                      TextSpan(
+                        text: opponentName,
+                        style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                      ),
+                    ],
+                  ),
                 ),
                 const Spacer(),
                 Text(
@@ -328,9 +345,24 @@ class _MatchReplayScreenState extends ConsumerState<MatchReplayScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Text(
-                  '$myName (You)',
-                  style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      if (myTitle != null && myTitle.isNotEmpty)
+                        TextSpan(
+                          text: '$myTitle ',
+                          style: GoogleFonts.inter(
+                            color: const Color(0xFFFFD700),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+                      TextSpan(
+                        text: '$myName (You)',
+                        style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                      ),
+                    ],
+                  ),
                 ),
                 const Spacer(),
                 Text(

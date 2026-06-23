@@ -119,6 +119,16 @@ export default function App() {
     }
   };
 
+  const handleTitleChange = async (userId: string, newTitle: string) => {
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      await axios.post(`${API_BASE}/wallet/admin/user/title`, { targetUserId: userId, title: newTitle }, { headers });
+      fetchDashboardData();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to update title.');
+    }
+  };
+
   const handleOverride = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -281,6 +291,7 @@ export default function App() {
                       <th>In-Play Balance</th>
                       <th>Role</th>
                       <th>Status</th>
+                      <th>Title</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
@@ -299,6 +310,31 @@ export default function App() {
                           <span className={`badge badge-${u.isBlocked ? 'failed' : 'success'}`}>
                             {u.isBlocked ? 'Blocked' : 'Active'}
                           </span>
+                        </td>
+                        <td>
+                          <select 
+                            value={u.title || ''} 
+                            onChange={(e) => handleTitleChange(u.id, e.target.value)}
+                            style={{
+                              backgroundColor: '#0f172a',
+                              color: '#fff',
+                              border: '1px solid #334155',
+                              borderRadius: '6px',
+                              padding: '4px 8px',
+                              fontSize: '0.85rem',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <option value="">None</option>
+                            <option value="GM">GM</option>
+                            <option value="IM">IM</option>
+                            <option value="FM">FM</option>
+                            <option value="CM">CM</option>
+                            <option value="WGM">WGM</option>
+                            <option value="WIM">WIM</option>
+                            <option value="WFM">WFM</option>
+                            <option value="WCM">WCM</option>
+                          </select>
                         </td>
                         <td>
                           {u.role !== 'SUPER_ADMIN' && u.role !== 'MODERATOR' ? (

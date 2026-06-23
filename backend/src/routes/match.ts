@@ -13,8 +13,8 @@ const router = Router();
 router.get('/open', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const matches = await Match.find({ status: 'WAITING' })
-      .populate('whitePlayerId', 'username elo')
-      .populate('blackPlayerId', 'username elo')
+      .populate('whitePlayerId', 'username elo title')
+      .populate('blackPlayerId', 'username elo title')
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -180,8 +180,8 @@ router.get('/my-active', authMiddleware, async (req: AuthRequest, res: Response)
         { blackPlayerId: userId }
       ]
     })
-    .populate('whitePlayerId', 'username elo')
-    .populate('blackPlayerId', 'username elo')
+    .populate('whitePlayerId', 'username elo title')
+    .populate('blackPlayerId', 'username elo title')
     .sort({ updatedAt: -1 });
 
     res.status(200).json({
@@ -205,8 +205,8 @@ router.get('/history', authMiddleware, async (req: AuthRequest, res: Response): 
         { blackPlayerId: userId }
       ]
     })
-    .populate('whitePlayerId', 'username elo')
-    .populate('blackPlayerId', 'username elo')
+    .populate('whitePlayerId', 'username elo title')
+    .populate('blackPlayerId', 'username elo title')
     .sort({ updatedAt: -1 });
 
     res.status(200).json({
@@ -223,8 +223,8 @@ router.get('/history', authMiddleware, async (req: AuthRequest, res: Response): 
 router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const match = await Match.findById(req.params.id)
-      .populate('whitePlayerId', 'username elo')
-      .populate('blackPlayerId', 'username elo');
+      .populate('whitePlayerId', 'username elo title')
+      .populate('blackPlayerId', 'username elo title');
 
     if (!match) {
       res.status(404).json({ success: false, error: 'Match not found.' });

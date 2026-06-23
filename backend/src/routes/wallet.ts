@@ -416,6 +416,7 @@ router.get('/admin/users', authMiddleware, adminMiddleware, async (req: AuthRequ
         phoneNumber: user.phoneNumber || '',
         balance: userWallet ? userWallet.balance : 0,
         lockedBalance: userWallet ? userWallet.lockedBalance : 0,
+        title: user.title || '',
       };
     });
 
@@ -461,6 +462,44 @@ router.post('/admin/user/block', authMiddleware, adminMiddleware, async (req: Au
   } catch (error) {
     console.error('Admin block user error:', error);
     res.status(500).json({ success: false, error: 'Server error processing block user.' });
+  }
+});
+
+// Admin sets or clears a user's chess title
+router.post('/admin/user/title', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { targetUserId, title } = req.body;
+
+    if (!targetUserId) {
+      res.status(400).json({ success: false, error: 'Target user ID is required.' });
+      return;
+    }
+
+    // Validate title value
+    const normalizedTitle = title ? title.trim().toUpperCase() : '';
+    const validTitles = ['GM', 'IM', 'FM', 'CM', 'WGM', 'WIM', 'WFM', 'WCM', ''];
+    if (!validTitles.includes(normalizedTitle)) {
+      res.status(400).json({ success: false, error: `Invalid title. Must be one of: ${validTitles.filter(Boolean).join(', ')} or empty.` });
+      return;
+    }
+
+    const targetUser = await User.findById(targetUserId);
+    if (!targetUser) {
+      res.status(404).json({ success: false, error: 'Target user not found.' });
+      return;
+    }
+
+    targetUser.title = normalizedTitle || '';
+    await targetUser.save();
+
+    res.status(200).json({
+      success: true,
+      message: `User title updated to ${normalizedTitle || 'none'}.`,
+      title: targetUser.title || '',
+    });
+  } catch (error) {
+    console.error('Admin set user title error:', error);
+    res.status(500).json({ success: false, error: 'Server error updating user title.' });
   }
 });
 

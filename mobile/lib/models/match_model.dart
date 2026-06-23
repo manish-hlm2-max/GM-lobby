@@ -4,6 +4,8 @@ class MatchModel {
   final String? blackPlayerId;
   final String? whiteUsername;
   final String? blackUsername;
+  final String? whiteTitle;
+  final String? blackTitle;
   final double entryFee;
   final double prizePool;
   final int timeControl;
@@ -20,6 +22,8 @@ class MatchModel {
     this.blackPlayerId,
     this.whiteUsername,
     this.blackUsername,
+    this.whiteTitle,
+    this.blackTitle,
     required this.entryFee,
     required this.prizePool,
     required this.timeControl,
@@ -46,6 +50,12 @@ class MatchModel {
       blackUsername: json['blackPlayerId'] is Map
           ? json['blackPlayerId']['username'] ?? json['blackUsername']
           : json['blackUsername'],
+      whiteTitle: json['whitePlayerId'] is Map
+          ? (json['whitePlayerId']['title'] != null && json['whitePlayerId']['title'].toString().isNotEmpty ? json['whitePlayerId']['title'].toString() : null)
+          : null,
+      blackTitle: json['blackPlayerId'] is Map
+          ? (json['blackPlayerId']['title'] != null && json['blackPlayerId']['title'].toString().isNotEmpty ? json['blackPlayerId']['title'].toString() : null)
+          : null,
       entryFee: (json['entryFee'] as num?)?.toDouble() ?? 0.0,
       prizePool: (json['prizePool'] as num?)?.toDouble() ?? 0.0,
       timeControl: json['timeControl'] ?? 600,
@@ -64,6 +74,8 @@ class MatchModel {
     String? blackPlayerId,
     String? whiteUsername,
     String? blackUsername,
+    String? whiteTitle,
+    String? blackTitle,
     double? entryFee,
     double? prizePool,
     int? timeControl,
@@ -80,6 +92,8 @@ class MatchModel {
       blackPlayerId: blackPlayerId ?? this.blackPlayerId,
       whiteUsername: whiteUsername ?? this.whiteUsername,
       blackUsername: blackUsername ?? this.blackUsername,
+      whiteTitle: whiteTitle ?? this.whiteTitle,
+      blackTitle: blackTitle ?? this.blackTitle,
       entryFee: entryFee ?? this.entryFee,
       prizePool: prizePool ?? this.prizePool,
       timeControl: timeControl ?? this.timeControl,

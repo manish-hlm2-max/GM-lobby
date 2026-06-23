@@ -99,6 +99,7 @@ router.post('/register', async (req, res: Response): Promise<void> => {
         phoneNumber: newUser.phoneNumber,
         elo: newUser.elo,
         role: newUser.role,
+        title: newUser.title || '',
       },
     });
   } catch (error) {
@@ -163,6 +164,7 @@ router.post('/login', async (req, res: Response): Promise<void> => {
         phoneNumber: user.phoneNumber || '',
         elo: user.elo,
         role: user.role,
+        title: user.title || '',
       },
     });
   } catch (error) {
@@ -247,6 +249,7 @@ router.post('/google', async (req, res: Response): Promise<void> => {
         phoneNumber: user.phoneNumber || '',
         elo: user.elo,
         role: user.role,
+        title: user.title || '',
       },
     });
   } catch (error) {
@@ -283,6 +286,7 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response): Promi
         losses: user.losses,
         draws: user.draws,
         role: user.role,
+        title: user.title || '',
       },
       wallet: wallet
         ? {
@@ -368,7 +372,7 @@ router.get('/users/search', authMiddleware, async (req: AuthRequest, res: Respon
       _id: { $ne: currentUserId },
       username: { $regex: new RegExp(username, 'i') },
       isBot: false
-    }).select('_id username elo wins losses draws');
+    }).select('_id username elo wins losses draws title');
 
     res.status(200).json({ success: true, users });
   } catch (error) {
