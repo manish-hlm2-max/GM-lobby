@@ -90,4 +90,29 @@ class WalletService {
       return [];
     }
   }
+
+  Future<Map<String, dynamic>?> getDepositSettings() async {
+    try {
+      final token = await _authService.getToken();
+      final response = await http.get(
+        Uri.parse(ApiConfig.depositSettings),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        return {
+          'upiId': data['upiId'],
+          'qrCodeUrl': data['qrCodeUrl'],
+        };
+      }
+      return null;
+    } catch (e) {
+      print('Error loading deposit settings: $e');
+      return null;
+    }
+  }
 }

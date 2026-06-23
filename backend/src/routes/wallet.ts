@@ -1,8 +1,11 @@
 import { Router, Response } from 'express';
 import mongoose from 'mongoose';
+import fs from 'fs';
+import path from 'path';
 import { Wallet } from '../models/Wallet';
 import { Transaction } from '../models/Transaction';
 import { User } from '../models/User';
+import { Settings } from '../models/Settings';
 import { authMiddleware, adminMiddleware, AuthRequest } from '../middleware/authMiddleware';
 import { isTransactionSupported } from '../config/db';
 
@@ -502,6 +505,99 @@ router.get('/admin/transactions', authMiddleware, adminMiddleware, async (req: A
   } catch (error) {
     console.error('Admin transactions fetch error:', error);
     res.status(500).json({ success: false, error: 'Server error fetching all system transactions.' });
+  }
+});
+
+// 15. Get current UPI ID and QR code URL for deposits
+router.get('/deposit-settings', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const upiSetting = await Settings.findOne({ key: 'deposit_upi_id' });
+    const qrSetting = await Settings.findOne({ key: 'deposit_qr_code_url' });
+
+    res.status(200).json({
+      success: true,
+      upiId: upiSetting ? upiSetting.value : 'fojimeena125-3@oksbi',
+      qrCodeUrl: qrSetting ? qrSetting.value : null
+    });
+  } catch (error) {
+    console.error('Fetch deposit settings error:', error);
+    res.status(500).json({ success: false, error: 'Server error fetching deposit settings.' });
+  }
+});
+
+// 16. Admin updates UPI ID and QR code image for deposits
+router.post('/admin/deposit-settings', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { upiId, qrCodeBase64 } = req.body;
+
+    let qrCodeUrl = null;
+
+    if (upiId) {
+      await Settings.findOneAndUpdate(
+        { key: 'deposit_upi_id' },
+        { value: upiId },
+        { upsert: true, new: true }
+      );
+    }
+
+    if (qrCodeBase64) {
+      // Decode base64 and save as file
+      const matches = qrCodeBase64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      let buffer: Buffer;
+
+      if (matches && matches.length === 3) {
+        buffer = Buffer.from(matches[2], 'base64');
+      } else {
+        buffer = Buffer.from(qrCodeBase64, 'base64');
+      }
+
+      // Create uploads directory if it doesn't exist
+      const uploadsDir = path.join(__dirname, '../../public/uploads');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+
+      // Write QR image
+      const filename = `qrcode_${Date.now()}.png`;
+      const filePath = path.join(uploadsDir, filename);
+      fs.writeFileSync(filePath, buffer);
+
+      // Delete old file if exists
+      const oldQrSetting = await Settings.findOne({ key: 'deposit_qr_code_url' });
+      if (oldQrSetting && typeof oldQrSetting.value === 'string') {
+        const oldFilename = oldQrSetting.value.split('?')[0].split('/').pop();
+        if (oldFilename) {
+          const oldFilePath = path.join(uploadsDir, oldFilename);
+          if (fs.existsSync(oldFilePath)) {
+            try {
+              fs.unlinkSync(oldFilePath);
+            } catch (err) {
+              console.error('Failed to delete old QR image:', err);
+            }
+          }
+        }
+      }
+
+      qrCodeUrl = `/uploads/${filename}`;
+      await Settings.findOneAndUpdate(
+        { key: 'deposit_qr_code_url' },
+        { value: qrCodeUrl },
+        { upsert: true, new: true }
+      );
+    } else {
+      const qrSetting = await Settings.findOne({ key: 'deposit_qr_code_url' });
+      qrCodeUrl = qrSetting ? qrSetting.value : null;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Deposit settings updated successfully.',
+      upiId: upiId || 'fojimeena125-3@oksbi',
+      qrCodeUrl
+    });
+  } catch (error) {
+    console.error('Admin update deposit settings error:', error);
+    res.status(500).json({ success: false, error: 'Server error updating deposit settings.' });
   }
 });
 

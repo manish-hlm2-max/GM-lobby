@@ -41,6 +41,13 @@ export default function App() {
   const [tournPrize, setTournPrize] = useState(0);
   const [tournTime, setTournTime] = useState('');
 
+  // Deposit settings state
+  const [upiId, setUpiId] = useState('');
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [newUpiId, setNewUpiId] = useState('');
+  const [newQrBase64, setNewQrBase64] = useState<string | null>(null);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+
   useEffect(() => {
     if (token) {
       fetchDashboardData();
@@ -61,6 +68,14 @@ export default function App() {
         // Filter transactions
         setTransactions(res.data.transactions.filter((tx: any) => tx.type === 'WITHDRAWAL'));
         setDeposits(res.data.transactions.filter((tx: any) => tx.type === 'DEPOSIT'));
+        
+        // Fetch deposit settings
+        const settingsRes = await axios.get(`${API_BASE}/wallet/deposit-settings`, { headers });
+        if (settingsRes.data.success) {
+          setUpiId(settingsRes.data.upiId);
+          setQrCodeUrl(settingsRes.data.qrCodeUrl);
+          setNewUpiId(settingsRes.data.upiId);
+        }
       } else if (activeTab === 'tournaments') {
         const res = await axios.get(`${API_BASE}/tournament`, { headers });
         setTournaments(res.data.tournaments);
@@ -118,6 +133,30 @@ export default function App() {
       fetchDashboardData();
     } catch (err: any) {
       alert(err.response?.data?.error || 'Action failed.');
+    }
+  };
+
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSettingsLoading(true);
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      const res = await axios.post(`${API_BASE}/wallet/admin/deposit-settings`, {
+        upiId: newUpiId,
+        qrCodeBase64: newQrBase64 || undefined
+      }, { headers });
+      
+      if (res.data.success) {
+        setUpiId(res.data.upiId);
+        setQrCodeUrl(res.data.qrCodeUrl);
+        setNewQrBase64(null);
+        alert('Deposit settings updated successfully!');
+        fetchDashboardData();
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to update settings.');
+    } finally {
+      setSettingsLoading(false);
     }
   };
 
@@ -495,8 +534,67 @@ export default function App() {
         )}
 
         {activeTab === 'deposits' && (
-          <div className="card">
-            <h3>Pending Cash Deposits</h3>
+          <div>
+            <div className="card" style={{ marginBottom: '24px' }}>
+              <h3>UPI & QR Code Deposit Settings</h3>
+              <form onSubmit={handleSaveSettings} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '20px', alignItems: 'end' }}>
+                <div>
+                  <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '4px' }}>Merchant UPI ID</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. merchant@upi" 
+                    value={newUpiId} 
+                    onChange={(e) => setNewUpiId(e.target.value)} 
+                    required 
+                  />
+                  {upiId && (
+                    <span style={{ fontSize: '0.75rem', color: '#10b981', display: 'block', marginTop: '4px' }}>
+                      Current: <strong>{upiId}</strong>
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '4px' }}>Upload QR Code Image</label>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setNewQrBase64(reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }} 
+                  />
+                  {qrCodeUrl && (
+                    <span style={{ fontSize: '0.75rem', color: '#38bdf8', display: 'block', marginTop: '4px' }}>
+                      QR Code is set. <a href={`${API_BASE.replace('/api', '')}${qrCodeUrl}`} target="_blank" rel="noreferrer" style={{ color: '#38bdf8', textDecoration: 'underline' }}>View current image</a>
+                    </span>
+                  )}
+                </div>
+                <button 
+                  className="btn-primary" 
+                  type="submit" 
+                  disabled={settingsLoading}
+                  style={{ height: '42px', marginBottom: '16px' }}
+                >
+                  {settingsLoading ? 'Saving...' : 'Save Settings'}
+                </button>
+              </form>
+              
+              {newQrBase64 && (
+                <div style={{ marginTop: '16px' }}>
+                  <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '4px' }}>New QR Preview</label>
+                  <img src={newQrBase64} alt="QR Preview" style={{ width: '120px', height: '120px', borderRadius: '8px', border: '1px solid #334155' }} />
+                </div>
+              )}
+            </div>
+
+            <div className="card">
+              <h3>Pending Cash Deposits</h3>
             {loading ? <p>Loading Transactions...</p> : deposits.length === 0 ? <p style={{ color: '#64748b' }}>No deposit requests found.</p> : (
               <table>
                 <thead>
@@ -538,6 +636,7 @@ export default function App() {
                 </tbody>
               </table>
             )}
+          </div>
           </div>
         )}
 

@@ -15,6 +15,7 @@ class ApiConfig {
   static const String deposit = '$baseUrl/api/wallet/deposit';
   static const String withdraw = '$baseUrl/api/wallet/withdraw';
   static const String transactions = '$baseUrl/api/wallet/history';
+  static const String depositSettings = '$baseUrl/api/wallet/deposit-settings';
 
   // Match endpoints
   static const String openMatches = '$baseUrl/api/match/open';

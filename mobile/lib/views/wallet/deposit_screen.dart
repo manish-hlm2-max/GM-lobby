@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/wallet_provider.dart';
+import '../../services/wallet_service.dart';
+import '../../config/api_config.dart';
 
 class DepositScreen extends ConsumerStatefulWidget {
   const DepositScreen({super.key});
@@ -16,7 +18,25 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
   final _amountController = TextEditingController();
   final _utrController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  final String _merchantUpiId = 'fojimeena125-3@oksbi';
+  String _merchantUpiId = 'fojimeena125-3@oksbi';
+  String? _merchantQrCodeUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDepositSettings();
+  }
+
+  Future<void> _loadDepositSettings() async {
+    final service = WalletService();
+    final settings = await service.getDepositSettings();
+    if (settings != null && mounted) {
+      setState(() {
+        _merchantUpiId = settings['upiId'] ?? 'fojimeena125-3@oksbi';
+        _merchantQrCodeUrl = settings['qrCodeUrl'];
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -446,41 +466,106 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
               child: Column(
                 children: [
                   // Premium offline custom vector QR code placeholder
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Container(
-                        width: 140,
-                        height: 140,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.04),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        // Mock grid patterns for QR code representation
-                        child: CustomPaint(
-                          painter: QrPatternPainter(),
-                        ),
-                      ),
-                      // Tap to zoom overlay pill
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.5),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.zoom_in, color: Colors.white, size: 12),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Tap to Zoom',
-                              style: GoogleFonts.inter(color: Colors.white, fontSize: 10),
+                  GestureDetector(
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => Dialog(
+                          backgroundColor: const Color(0xFF0F172A),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: _merchantQrCodeUrl != null
+                                      ? Image.network(
+                                          '${ApiConfig.baseUrl}$_merchantQrCodeUrl',
+                                          width: 280,
+                                          height: 280,
+                                          fit: BoxFit.contain,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            return Container(
+                                              width: 280,
+                                              height: 280,
+                                              color: Colors.white.withOpacity(0.04),
+                                              child: CustomPaint(painter: QrPatternPainter()),
+                                            );
+                                          },
+                                        )
+                                      : Container(
+                                          width: 280,
+                                          height: 280,
+                                          color: Colors.white.withOpacity(0.04),
+                                          child: CustomPaint(painter: QrPatternPainter()),
+                                        ),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Merchant QR Code',
+                                  style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _merchantUpiId,
+                                  style: GoogleFonts.inter(color: Colors.white70, fontSize: 13),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ],
+                      );
+                    },
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: 140,
+                          height: 140,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.04),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: _merchantQrCodeUrl != null
+                                ? Image.network(
+                                    '${ApiConfig.baseUrl}$_merchantQrCodeUrl',
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return CustomPaint(
+                                        painter: QrPatternPainter(),
+                                      );
+                                    },
+                                  )
+                                : CustomPaint(
+                                    painter: QrPatternPainter(),
+                                  ),
+                          ),
+                        ),
+                        // Tap to zoom overlay pill
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.zoom_in, color: Colors.white, size: 12),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Tap to Zoom',
+                                style: GoogleFonts.inter(color: Colors.white, fontSize: 10),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
