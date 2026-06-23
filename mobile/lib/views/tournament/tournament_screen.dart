@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -27,209 +28,290 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final lobbyState = ref.watch(lobbyProvider);
+    final userId = authState.user?.id;
 
     return Scaffold(
       backgroundColor: const Color(0xFF030712),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Tournaments',
-              style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Compete in multi-round brackets for huge prizes.',
-              style: GoogleFonts.inter(color: Colors.white38, fontSize: 13),
-            ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: lobbyState.tournaments.isEmpty
-                  ? Center(
-                      child: Text(
-                        'No upcoming tournaments scheduled.',
-                        style: GoogleFonts.inter(color: Colors.white24),
-                      ),
-                    )
-                  : ListView.builder(
-                      itemCount: lobbyState.tournaments.length,
-                      itemBuilder: (context, index) {
-                        final tourn = lobbyState.tournaments[index];
-                        final isRegistered = tourn.participants.any(
-                          (p) => p['userId'] == authState.user?.id,
-                        );
-
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 16),
-                          padding: const EdgeInsets.all(20),
+      body: RefreshIndicator(
+        color: Colors.teal,
+        backgroundColor: const Color(0xFF0F172A),
+        onRefresh: () => ref.read(lobbyProvider.notifier).refreshLobby(),
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.02),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.white.withOpacity(0.06)),
+                            gradient: LinearGradient(
+                              colors: [Colors.teal.withOpacity(0.3), Colors.teal.withOpacity(0.1)],
+                            ),
+                            borderRadius: BorderRadius.circular(14),
                           ),
+                          child: const Icon(Icons.emoji_events_rounded, color: Colors.amber, size: 24),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      tourn.name,
-                                      style: GoogleFonts.outfit(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: tourn.status == 'ACTIVE' 
-                                          ? Colors.green.withOpacity(0.1) 
-                                          : Colors.teal.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      tourn.status,
-                                      style: TextStyle(
-                                        color: tourn.status == 'ACTIVE' ? Colors.green[400] : Colors.teal[300],
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                              Text(
+                                'Tournaments',
+                                style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
                               ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Icon(Icons.emoji_events_rounded, color: Colors.amber[400], size: 20),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Prize Pool: ₹${tourn.totalPrize.toStringAsFixed(2)}',
-                                    style: GoogleFonts.inter(color: Colors.white70, fontSize: 14),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  const Icon(Icons.schedule_rounded, color: Colors.white38, size: 20),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Starts: ${tourn.scheduledStartTime.toLocal().toString().substring(0, 16)}',
-                                    style: GoogleFonts.inter(color: Colors.white70, fontSize: 13),
-                                  ),
-                                ],
-                              ),
-                              if (tourn.status == 'ACTIVE' || tourn.status == 'COMPLETED') ...[
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.star_rounded, color: Colors.amber, size: 20),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Round: ${tourn.currentRound} of ${tourn.roundCount}',
-                                      style: GoogleFonts.inter(color: Colors.white70, fontSize: 13),
-                                    ),
-                                  ],
-                                ),
-                                if (tourn.status == 'ACTIVE' && tourn.roundStartTime != null && isRegistered) ...[
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      const Icon(Icons.timer_outlined, color: Colors.amber, size: 20),
-                                      const SizedBox(width: 8),
-                                      RoundCountdown(
-                                        roundStartTime: tourn.roundStartTime!,
-                                        durationSeconds: tourn.roundDurationSeconds,
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ],
-                              const SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Participants: ${tourn.participants.length}',
-                                    style: GoogleFonts.inter(color: Colors.white38, fontSize: 13),
-                                  ),
-                                  if (tourn.status == 'UPCOMING') ...[
-                                    ElevatedButton(
-                                      onPressed: isRegistered
-                                          ? null
-                                          : () async {
-                                              final success = await ref
-                                                  .read(lobbyProvider.notifier)
-                                                  .registerTournament(tourn.id);
-                                              if (success && mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  const SnackBar(
-                                                    content: Text('Registered for tournament!'),
-                                                    backgroundColor: Colors.teal,
-                                                  ),
-                                                );
-                                                ref.read(authProvider.notifier).checkAuth();
-                                              }
-                                            },
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: isRegistered ? Colors.grey[800] : Colors.teal[400],
-                                        disabledBackgroundColor: Colors.teal[800]?.withOpacity(0.3),
-                                      ),
-                                      child: isRegistered
-                                          ? Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: const [
-                                                Icon(Icons.check_rounded, size: 16, color: Colors.white70),
-                                                SizedBox(width: 4),
-                                                Text('Registered', style: TextStyle(color: Colors.white70)),
-                                              ],
-                                            )
-                                          : Text(
-                                              'Join (₹${tourn.entryFee.toStringAsFixed(2)})',
-                                              style: const TextStyle(color: Colors.white),
-                                            ),
-                                    )
-                                  ] else if (tourn.status == 'ACTIVE' || tourn.status == 'COMPLETED') ...[
-                                    if (isRegistered)
-                                      ElevatedButton(
-                                        onPressed: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) => TournamentDetailsScreen(tournamentId: tourn.id),
-                                            ),
-                                          );
-                                        },
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: tourn.status == 'ACTIVE' ? Colors.teal[400] : Colors.blueAccent,
-                                        ),
-                                        child: Text(
-                                          tourn.status == 'ACTIVE' ? 'Play' : 'Results',
-                                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                        ),
-                                      )
-                                    else
-                                      ElevatedButton(
-                                        onPressed: null,
-                                        style: ElevatedButton.styleFrom(
-                                          disabledBackgroundColor: Colors.white.withOpacity(0.04),
-                                        ),
-                                        child: Text(
-                                          tourn.status == 'ACTIVE' ? 'Started' : 'Ended',
-                                          style: const TextStyle(color: Colors.white24),
-                                        ),
-                                      )
-                                  ],
-                                ],
+                              const SizedBox(height: 2),
+                              Text(
+                                'Play 1 match every 12 hours. Climb the leaderboard.',
+                                style: GoogleFonts.inter(color: Colors.white38, fontSize: 12),
                               ),
                             ],
                           ),
-                        );
-                      },
+                        ),
+                      ],
                     ),
+                  ],
+                ),
+              ),
+            ),
+            if (lobbyState.tournaments.isEmpty)
+              SliverFillRemaining(
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.sports_esports_outlined, color: Colors.white12, size: 64),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No tournaments scheduled',
+                        style: GoogleFonts.inter(color: Colors.white24, fontSize: 15),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Check back soon!',
+                        style: GoogleFonts.inter(color: Colors.white12, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final tourn = lobbyState.tournaments[index];
+                      final isRegistered = tourn.participants.any(
+                        (p) => p['userId'] == userId,
+                      );
+                      return _TournamentCard(
+                        tourn: tourn,
+                        isRegistered: isRegistered,
+                        onRegister: () async {
+                          final success = await ref.read(lobbyProvider.notifier).registerTournament(tourn.id);
+                          if (success && mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('You\'re in! Good luck 🎯', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                                backgroundColor: Colors.teal[700],
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            );
+                            ref.read(authProvider.notifier).checkAuth();
+                          }
+                        },
+                        onOpenDetails: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => TournamentDetailsScreen(tournamentId: tourn.id),
+                            ),
+                          );
+                          // Refresh lobby when returning from details (user may have played a match)
+                          ref.read(lobbyProvider.notifier).refreshLobby();
+                        },
+                      );
+                    },
+                    childCount: lobbyState.tournaments.length,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────
+//  Tournament Card Widget
+// ─────────────────────────────────────────────────────
+
+class _TournamentCard extends StatelessWidget {
+  final TournamentModel tourn;
+  final bool isRegistered;
+  final VoidCallback onRegister;
+  final VoidCallback onOpenDetails;
+
+  const _TournamentCard({
+    required this.tourn,
+    required this.isRegistered,
+    required this.onRegister,
+    required this.onOpenDetails,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = tourn.status == 'ACTIVE';
+    final isCompleted = tourn.status == 'COMPLETED';
+    final isUpcoming = tourn.status == 'UPCOMING';
+
+    // Determine border & accent color
+    Color accentColor = Colors.teal;
+    if (isActive && isRegistered) {
+      accentColor = const Color(0xFF10B981); // emerald green
+    } else if (isCompleted) {
+      accentColor = Colors.blueAccent;
+    }
+
+    return GestureDetector(
+      onTap: (isActive || isCompleted) && isRegistered ? onOpenDetails : null,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              const Color(0xFF0F172A),
+              isActive && isRegistered
+                  ? const Color(0xFF0A1628)
+                  : const Color(0xFF0D1117),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isActive && isRegistered
+                ? accentColor.withOpacity(0.35)
+                : Colors.white.withOpacity(0.06),
+            width: isActive && isRegistered ? 1.5 : 1,
+          ),
+          boxShadow: isActive && isRegistered
+              ? [
+                  BoxShadow(
+                    color: accentColor.withOpacity(0.08),
+                    blurRadius: 16,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : [],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Card Header ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          tourn.name,
+                          style: GoogleFonts.outfit(
+                            color: Colors.white,
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Icon(Icons.emoji_events_rounded, color: Colors.amber[400], size: 16),
+                            const SizedBox(width: 5),
+                            Text(
+                              '₹${tourn.totalPrize.toStringAsFixed(0)}',
+                              style: GoogleFonts.outfit(
+                                color: Colors.amber[300],
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Icon(Icons.people_alt_rounded, color: Colors.white30, size: 15),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${tourn.participants.length}',
+                              style: GoogleFonts.inter(color: Colors.white38, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  _StatusBadge(status: tourn.status),
+                ],
+              ),
+            ),
+
+            // ── Info Row ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
+              child: Row(
+                children: [
+                  const Icon(Icons.calendar_today_rounded, color: Colors.white24, size: 14),
+                  const SizedBox(width: 6),
+                  Text(
+                    _formatDate(tourn.scheduledStartTime),
+                    style: GoogleFonts.inter(color: Colors.white38, fontSize: 12),
+                  ),
+                  if (isActive || isCompleted) ...[
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.04),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'Round ${tourn.currentRound}/${tourn.roundCount}',
+                        style: GoogleFonts.inter(
+                          color: Colors.white54,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
+            // ── Countdown Timer (only for registered + active tournaments) ──
+            if (isActive && isRegistered && tourn.roundStartTime != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+                child: _CountdownBanner(
+                  roundStartTime: tourn.roundStartTime!,
+                  durationSeconds: tourn.roundDurationSeconds,
+                  currentRound: tourn.currentRound,
+                ),
+              ),
+
+            // ── Action Row ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+              child: _buildActionRow(context),
             ),
           ],
         ),
@@ -237,103 +319,312 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
     );
   }
 
-  void _showPointsTable(BuildContext context, TournamentModel tourn) {
-    final participants = List<dynamic>.from(tourn.participants);
-    participants.sort((a, b) {
-      final scoreA = (a['score'] as num?)?.toDouble() ?? 0.0;
-      final scoreB = (b['score'] as num?)?.toDouble() ?? 0.0;
-      return scoreB.compareTo(scoreA);
-    });
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF0F172A),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Tournament Leaderboard',
-                    style: GoogleFonts.outfit(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close_rounded, color: Colors.white54),
-                  ),
-                ],
+  Widget _buildActionRow(BuildContext context) {
+    if (tourn.status == 'UPCOMING') {
+      return SizedBox(
+        width: double.infinity,
+        height: 44,
+        child: isRegistered
+            ? OutlinedButton.icon(
+                onPressed: null,
+                icon: const Icon(Icons.check_circle_rounded, size: 16),
+                label: Text('Registered', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.teal[300],
+                  side: BorderSide(color: Colors.teal.withOpacity(0.3)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  disabledForegroundColor: Colors.teal[400],
+                ),
+              )
+            : ElevatedButton.icon(
+                onPressed: onRegister,
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: Text(
+                  tourn.entryFee > 0
+                      ? 'Join Tournament  •  ₹${tourn.entryFee.toStringAsFixed(0)}'
+                      : 'Join Tournament  •  Free',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal[400],
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
               ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.vertical,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: DataTable(
-                      columnSpacing: 16,
-                      horizontalMargin: 8,
-                      columns: [
-                        DataColumn(label: Text('Rank', style: GoogleFonts.inter(fontWeight: FontWeight.bold))),
-                        DataColumn(label: Text('Player', style: GoogleFonts.inter(fontWeight: FontWeight.bold))),
-                        DataColumn(label: Text('Played', style: GoogleFonts.inter(fontWeight: FontWeight.bold))),
-                        DataColumn(label: Text('W', style: GoogleFonts.inter(color: Colors.green[400], fontWeight: FontWeight.bold))),
-                        DataColumn(label: Text('D', style: GoogleFonts.inter(color: Colors.amber[400], fontWeight: FontWeight.bold))),
-                        DataColumn(label: Text('L', style: GoogleFonts.inter(color: Colors.red[400], fontWeight: FontWeight.bold))),
-                        DataColumn(label: Text('Points', style: GoogleFonts.inter(color: Colors.teal[300], fontWeight: FontWeight.bold))),
-                      ],
-                      rows: List<DataRow>.generate(participants.length, (index) {
-                        final p = participants[index];
-                        final userId = p['userId'];
-                        final username = p['username'] ?? 'Player';
-                        
-                        int wins = 0;
-                        int matchesPlayed = 0;
-                        for (var b in tourn.brackets) {
-                          if (b['playerA'] == userId || b['playerB'] == userId) {
-                            final round = b['round'] as int;
-                            final hasWinner = b['winner'] != null;
-                            if (round < tourn.currentRound || hasWinner) {
-                              matchesPlayed++;
-                            }
-                            if (b['winner'] == userId) {
-                              wins++;
-                            }
-                          }
-                        }
-                        final score = (p['score'] as num?)?.toDouble() ?? 0.0;
-                        final draws = ((score - wins) * 2).round().clamp(0, 10);
-                        final losses = (matchesPlayed - wins - draws).clamp(0, 10);
+      );
+    }
 
-                        return DataRow(
-                          cells: [
-                            DataCell(Text('#${index + 1}', style: const TextStyle(fontWeight: FontWeight.bold))),
-                            DataCell(Text(username, style: const TextStyle(fontWeight: FontWeight.w600))),
-                            DataCell(Text('$matchesPlayed')),
-                            DataCell(Text('$wins', style: TextStyle(color: Colors.green[400]))),
-                            DataCell(Text('$draws', style: TextStyle(color: Colors.amber[400]))),
-                            DataCell(Text('$losses', style: TextStyle(color: Colors.red[400]))),
-                            DataCell(Text(score.toStringAsFixed(1), style: TextStyle(color: Colors.teal[300], fontWeight: FontWeight.bold))),
-                          ],
-                        );
-                      }),
-                    ),
+    if (tourn.status == 'ACTIVE') {
+      if (isRegistered) {
+        return SizedBox(
+          width: double.infinity,
+          height: 46,
+          child: ElevatedButton.icon(
+            onPressed: onOpenDetails,
+            icon: const Icon(Icons.sports_esports_rounded, size: 20),
+            label: Text(
+              'OPEN TOURNAMENT',
+              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              elevation: 0,
+            ),
+          ),
+        );
+      }
+      return Container(
+        height: 44,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.03),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          'Tournament In Progress',
+          style: GoogleFonts.inter(color: Colors.white24, fontSize: 13, fontWeight: FontWeight.w500),
+        ),
+      );
+    }
+
+    if (tourn.status == 'COMPLETED') {
+      if (isRegistered) {
+        return SizedBox(
+          width: double.infinity,
+          height: 44,
+          child: OutlinedButton.icon(
+            onPressed: onOpenDetails,
+            icon: const Icon(Icons.leaderboard_rounded, size: 18),
+            label: Text(
+              'View Results',
+              style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.blueAccent,
+              side: BorderSide(color: Colors.blueAccent.withOpacity(0.3)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        );
+      }
+      return Container(
+        height: 44,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.03),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          'Tournament Ended',
+          style: GoogleFonts.inter(color: Colors.white24, fontSize: 13, fontWeight: FontWeight.w500),
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  String _formatDate(DateTime dt) {
+    final local = dt.toLocal();
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
+    final amPm = local.hour >= 12 ? 'PM' : 'AM';
+    return '${months[local.month - 1]} ${local.day}, ${local.year} • $hour:${local.minute.toString().padLeft(2, '0')} $amPm';
+  }
+}
+
+// ─────────────────────────────────────────────────────
+//  Status Badge
+// ─────────────────────────────────────────────────────
+
+class _StatusBadge extends StatelessWidget {
+  final String status;
+  const _StatusBadge({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    Color bgColor;
+    Color textColor;
+    String label;
+
+    switch (status) {
+      case 'ACTIVE':
+        bgColor = const Color(0xFF10B981).withOpacity(0.12);
+        textColor = const Color(0xFF34D399);
+        label = '● LIVE';
+        break;
+      case 'COMPLETED':
+        bgColor = Colors.blueAccent.withOpacity(0.1);
+        textColor = Colors.blueAccent;
+        label = 'ENDED';
+        break;
+      default:
+        bgColor = Colors.teal.withOpacity(0.08);
+        textColor = Colors.teal[300]!;
+        label = 'UPCOMING';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.inter(
+          color: textColor,
+          fontWeight: FontWeight.bold,
+          fontSize: 11,
+          letterSpacing: 0.3,
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────
+//  Countdown Banner (shown on tournament card)
+// ─────────────────────────────────────────────────────
+
+class _CountdownBanner extends StatefulWidget {
+  final DateTime roundStartTime;
+  final int durationSeconds;
+  final int currentRound;
+
+  const _CountdownBanner({
+    required this.roundStartTime,
+    required this.durationSeconds,
+    required this.currentRound,
+  });
+
+  @override
+  State<_CountdownBanner> createState() => _CountdownBannerState();
+}
+
+class _CountdownBannerState extends State<_CountdownBanner> {
+  Timer? _timer;
+  late Duration _timeRemaining;
+
+  @override
+  void initState() {
+    super.initState();
+    _calculate();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _calculate());
+    });
+  }
+
+  void _calculate() {
+    final endTime = widget.roundStartTime.add(Duration(seconds: widget.durationSeconds));
+    _timeRemaining = endTime.difference(DateTime.now());
+    if (_timeRemaining.isNegative) _timeRemaining = Duration.zero;
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hours = _timeRemaining.inHours.toString().padLeft(2, '0');
+    final minutes = (_timeRemaining.inMinutes % 60).toString().padLeft(2, '0');
+    final seconds = (_timeRemaining.inSeconds % 60).toString().padLeft(2, '0');
+    final isUrgent = _timeRemaining.inMinutes < 30;
+    final isExpired = _timeRemaining == Duration.zero;
+
+    // Progress: how much of the 12-hour period has elapsed
+    final totalSeconds = widget.durationSeconds;
+    final elapsed = totalSeconds - _timeRemaining.inSeconds;
+    final progress = (elapsed / totalSeconds).clamp(0.0, 1.0);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isExpired
+              ? [Colors.red.withOpacity(0.12), Colors.red.withOpacity(0.04)]
+              : isUrgent
+                  ? [Colors.orange.withOpacity(0.12), Colors.orange.withOpacity(0.04)]
+                  : [Colors.teal.withOpacity(0.10), Colors.teal.withOpacity(0.03)],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isExpired
+              ? Colors.red.withOpacity(0.2)
+              : isUrgent
+                  ? Colors.orange.withOpacity(0.2)
+                  : Colors.teal.withOpacity(0.15),
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(
+                isExpired ? Icons.timer_off_rounded : Icons.timer_rounded,
+                color: isExpired
+                    ? Colors.redAccent
+                    : isUrgent
+                        ? Colors.orange[300]
+                        : Colors.teal[300],
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  isExpired ? 'Round ending soon...' : 'Round ${widget.currentRound} ends in',
+                  style: GoogleFonts.inter(
+                    color: Colors.white54,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
                   ),
+                ),
+              ),
+              Text(
+                isExpired ? '--:--:--' : '$hours:$minutes:$seconds',
+                style: GoogleFonts.shareTechMono(
+                  color: isExpired
+                      ? Colors.redAccent
+                      : isUrgent
+                          ? Colors.orange[300]
+                          : Colors.teal[300],
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
-        );
-      },
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 3,
+              backgroundColor: Colors.white.withOpacity(0.06),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                isExpired
+                    ? Colors.redAccent
+                    : isUrgent
+                        ? Colors.orange[400]!
+                        : Colors.teal[400]!,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
+
+// ─────────────────────────────────────────────────────
+//  RoundCountdown (used by details screen)
+// ─────────────────────────────────────────────────────
 
 class RoundCountdown extends StatefulWidget {
   final DateTime roundStartTime;
@@ -383,9 +674,9 @@ class _RoundCountdownState extends State<RoundCountdown> {
   @override
   Widget build(BuildContext context) {
     if (_timeRemaining == Duration.zero) {
-      return const Text(
+      return Text(
         'Round ending soon...',
-        style: TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.bold),
+        style: GoogleFonts.inter(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.bold),
       );
     }
 
@@ -394,8 +685,8 @@ class _RoundCountdownState extends State<RoundCountdown> {
     final seconds = (_timeRemaining.inSeconds % 60).toString().padLeft(2, '0');
 
     return Text(
-      'Round Ends In: ${hours}h ${minutes}m ${seconds}s',
-      style: GoogleFonts.shareTechMono(color: Colors.amber[400], fontSize: 14, fontWeight: FontWeight.bold),
+      '$hours:$minutes:$seconds',
+      style: GoogleFonts.shareTechMono(color: Colors.teal[300], fontSize: 15, fontWeight: FontWeight.bold),
     );
   }
 }
