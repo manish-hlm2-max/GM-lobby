@@ -225,15 +225,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                   child: Row(
                     children: [
-                      CircleAvatar(
-                        radius: 28,
-                        backgroundColor: Colors.teal[400],
-                        child: Text(
-                          authState.user?.username.substring(0, 1).toUpperCase() ?? 'U',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24, color: Colors.white),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -241,7 +232,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             Text.rich(
                               TextSpan(
                                 children: [
-                                  const TextSpan(text: 'Hello, '),
                                   buildTitleBadge(authState.user?.title, fontSize: 11, rightMargin: 6),
                                   TextSpan(
                                     text: authState.user?.username ?? 'Player',
