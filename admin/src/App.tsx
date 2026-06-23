@@ -85,6 +85,10 @@ export default function App() {
       }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to fetch data.');
+      if (err.response?.status === 401) {
+        localStorage.removeItem('admin_token');
+        setToken(null);
+      }
     } finally {
       setLoading(false);
     }
