@@ -33,6 +33,7 @@ export default function App() {
   const [overrideUser, setOverrideUser] = useState('');
   const [overrideAmount, setOverrideAmount] = useState(0);
   const [overrideReason, setOverrideReason] = useState('');
+  const [overrideAction, setOverrideAction] = useState<'add' | 'deduct'>('add');
   
   const [tournName, setTournName] = useState('');
   const [tournEntry, setTournEntry] = useState(0);
@@ -133,9 +134,10 @@ export default function App() {
     e.preventDefault();
     try {
       const headers = { Authorization: `Bearer ${token}` };
+      const finalAmount = overrideAction === 'add' ? overrideAmount : -overrideAmount;
       await axios.post(`${API_BASE}/wallet/admin/override`, {
         targetUserId: overrideUser,
-        amount: overrideAmount,
+        amount: finalAmount,
         reason: overrideReason
       }, { headers });
       
@@ -143,7 +145,7 @@ export default function App() {
       setOverrideAmount(0);
       setOverrideReason('');
       fetchDashboardData();
-      alert('Override successfully processed!');
+      alert('Balance adjustment successfully processed!');
     } catch (err: any) {
       alert(err.response?.data?.error || 'Override failed.');
     }
@@ -254,7 +256,7 @@ export default function App() {
 
             <div className="card">
               <h3>Balance Override Utility</h3>
-              <form onSubmit={handleOverride} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '16px', alignItems: 'end' }}>
+              <form onSubmit={handleOverride} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto', gap: '16px', alignItems: 'end' }}>
                 <div>
                   <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '4px' }}>Select Target Player</label>
                   <select value={overrideUser} onChange={(e) => setOverrideUser(e.target.value)} required>
@@ -265,14 +267,32 @@ export default function App() {
                   </select>
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '4px' }}>Amount (+/-)</label>
-                  <input type="number" step="0.01" value={overrideAmount} onChange={(e) => setOverrideAmount(parseFloat(e.target.value))} required />
+                  <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '4px' }}>Action</label>
+                  <select value={overrideAction} onChange={(e) => setOverrideAction(e.target.value as 'add' | 'deduct')} required>
+                    <option value="add">Add Cash (+)</option>
+                    <option value="deduct">Deduct Cash (-)</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '4px' }}>Amount (₹)</label>
+                  <input type="number" min="0.01" step="0.01" value={overrideAmount === 0 ? '' : overrideAmount} onChange={(e) => setOverrideAmount(parseFloat(e.target.value) || 0)} required />
                 </div>
                 <div>
                   <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '4px' }}>Reason</label>
                   <input type="text" placeholder="Audit description" value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)} required />
                 </div>
-                <button className="btn-primary" type="submit" style={{ height: '42px', marginBottom: '16px' }}>Apply Override</button>
+                <button 
+                  className="btn-primary" 
+                  type="submit" 
+                  style={{ 
+                    height: '42px', 
+                    marginBottom: '16px',
+                    backgroundColor: overrideAction === 'add' ? '#10b981' : '#ef4444',
+                    borderColor: overrideAction === 'add' ? '#10b981' : '#ef4444'
+                  }}
+                >
+                  {overrideAction === 'add' ? 'Add Funds' : 'Deduct Funds'}
+                </button>
               </form>
             </div>
 
