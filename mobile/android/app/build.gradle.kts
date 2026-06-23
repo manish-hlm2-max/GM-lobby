@@ -41,9 +41,9 @@ fun incrementPubspecVersion() {
     // Write the actual compiled versionCode to the backend's version.json
     val versionJsonFile = File(projectDir, "../../../backend/public/version.json")
     if (versionJsonFile.exists()) {
-        println("Syncing compiled version code $newVersionCode to backend version.json")
+        println("Syncing compiled version code $currentVersionCode to backend version.json")
         versionJsonFile.writeText("""{
-  "versionCode": $newVersionCode,
+  "versionCode": $currentVersionCode,
   "versionName": "$currentVersionName",
   "isMandatory": true
 }
