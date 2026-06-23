@@ -4,6 +4,7 @@ import { Match } from '../models/Match';
 import { Wallet } from '../models/Wallet';
 import { Transaction } from '../models/Transaction';
 import { User } from '../models/User';
+import { Tournament } from '../models/Tournament';
 import { authMiddleware, AuthRequest } from '../middleware/authMiddleware';
 import { getIoInstance, triggerBotMoveIfActive } from '../sockets/gameSocket';
 
@@ -491,6 +492,23 @@ router.post('/force-bot-join', authMiddleware, async (req: AuthRequest, res: Res
 
       match.status = 'RUNNING';
       await match.save();
+
+      if (match.tournamentId) {
+        const tournament = await Tournament.findById(match.tournamentId);
+        if (tournament) {
+          const isPaired = tournament.brackets.some(b => b.matchId.toString() === match._id.toString());
+          if (!isPaired) {
+            tournament.brackets.push({
+              round: match.round || tournament.currentRound,
+              matchId: match._id as mongoose.Types.ObjectId,
+              playerA: match.whitePlayerId!,
+              playerB: match.blackPlayerId!,
+            });
+            await tournament.save();
+            console.log(`[FORCE-BOT-JOIN] Recorded bracket for tournament match: ${match._id}`);
+          }
+        }
+      }
 
       console.log('[FORCE-BOT-JOIN] Bot joined match successfully:', match._id);
 

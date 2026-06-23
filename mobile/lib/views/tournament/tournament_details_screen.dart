@@ -1,11 +1,14 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/tournament_model.dart';
+import '../../models/match_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/lobby_provider.dart';
 import '../../providers/game_provider.dart';
 import '../../services/match_service.dart';
+import '../../services/tournament_service.dart';
 import '../game/game_screen.dart';
 import 'tournament_screen.dart';
 
@@ -186,22 +189,54 @@ class _TournamentDetailsScreenState extends ConsumerState<TournamentDetailsScree
     }
 
     if (myBracket == null) {
+      // The user has NOT played or queued for a match in this round yet. Show Matchmaking Trigger button.
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.redAccent.withOpacity(0.05),
+          gradient: LinearGradient(
+            colors: [
+              Colors.teal.withOpacity(0.12),
+              Colors.teal.withOpacity(0.02),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.redAccent.withOpacity(0.2)),
+          border: Border.all(color: Colors.teal.withOpacity(0.3)),
         ),
-        child: Row(
+        child: Column(
           children: [
-            const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 28),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'No match pair found for you in Round ${tourn.currentRound}. Please contact support.',
-                style: GoogleFonts.inter(color: Colors.white70, fontSize: 13),
+            Text(
+              'Round ${tourn.currentRound} Match is Ready!',
+              style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Find an opponent and play your match for this round.',
+              style: GoogleFonts.inter(color: Colors.white60, fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) => TournamentMatchmakingDialog(tournamentId: tourn.id),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal[400],
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Text(
+                  'PLAY MATCH NOW',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
+                ),
               ),
             ),
           ],
@@ -237,30 +272,31 @@ class _TournamentDetailsScreenState extends ConsumerState<TournamentDetailsScree
       );
     }
 
+    // Bracket is not null, but hasCompletedMatch is false -> Match is active and waiting to be finished/resumed!
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Colors.teal.withOpacity(0.12),
-            Colors.teal.withOpacity(0.02),
+            Colors.amber.withOpacity(0.12),
+            Colors.amber.withOpacity(0.02),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.teal.withOpacity(0.3)),
+        border: Border.all(color: Colors.amber.withOpacity(0.3)),
       ),
       child: Column(
         children: [
           Text(
-            'Your Round ${tourn.currentRound} Match is Ready!',
+            'Ongoing Match Detected!',
             style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
           ),
           const SizedBox(height: 6),
           Text(
-            'Play your match now before the round timer expires.',
+            'You have an unfinished game for Round ${tourn.currentRound}. Resume it now.',
             style: GoogleFonts.inter(color: Colors.white60, fontSize: 13),
             textAlign: TextAlign.center,
           ),
@@ -271,7 +307,7 @@ class _TournamentDetailsScreenState extends ConsumerState<TournamentDetailsScree
             child: ElevatedButton(
               onPressed: _isLaunchingMatch ? null : () => _launchMatch(myBracket['matchId']),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal[400],
+                backgroundColor: Colors.amber[600],
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               child: _isLaunchingMatch
@@ -281,8 +317,8 @@ class _TournamentDetailsScreenState extends ConsumerState<TournamentDetailsScree
                       child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                     )
                   : Text(
-                      'PLAY MATCH NOW',
-                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
+                      'RESUME MATCH',
+                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black),
                     ),
             ),
           ),
@@ -407,6 +443,218 @@ class _TournamentDetailsScreenState extends ConsumerState<TournamentDetailsScree
                 ],
               );
             }),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class TournamentMatchmakingDialog extends ConsumerStatefulWidget {
+  final String tournamentId;
+
+  const TournamentMatchmakingDialog({
+    super.key,
+    required this.tournamentId,
+  });
+
+  @override
+  ConsumerState<TournamentMatchmakingDialog> createState() => _TournamentMatchmakingDialogState();
+}
+
+class _TournamentMatchmakingDialogState extends ConsumerState<TournamentMatchmakingDialog> {
+  Timer? _timer;
+  int _secondsLeft = 20;
+  MatchModel? _match;
+  String _statusText = 'Finding opponent...';
+
+  @override
+  void initState() {
+    super.initState();
+    _startSearch();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _startSearch() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_secondsLeft > 0) {
+        setState(() {
+          _secondsLeft--;
+        });
+      } else {
+        _timer?.cancel();
+        _onTimeout();
+      }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      setState(() {
+        _statusText = 'Connecting to tournament lobby...';
+      });
+
+      final res = await TournamentService().matchmakeTournament(widget.tournamentId);
+      if (!mounted) return;
+
+      if (res['success'] == true) {
+        final matchJson = res['match'];
+        final match = MatchModel.fromJson(matchJson);
+        setState(() {
+          _match = match;
+          _statusText = 'Waiting for another player...';
+        });
+
+        // Initialize game socket
+        ref.read(gameProvider.notifier).initMatch(match);
+      } else {
+        _timer?.cancel();
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.redAccent,
+            content: Text(res['error'] ?? 'Matchmaking failed.', style: const TextStyle(color: Colors.white)),
+          ),
+        );
+      }
+    });
+  }
+
+  Future<void> _onTimeout() async {
+    if (_match != null && _match!.status == 'WAITING') {
+      setState(() {
+        _statusText = 'Opponent found! Joining game...';
+      });
+      final botRes = await ref.read(lobbyProvider.notifier).forceBotJoin(_match!.id);
+      if (mounted) {
+        if (botRes['success'] != true) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: Colors.redAccent,
+              content: Text(botRes['error'] ?? 'Failed to connect to bot.', style: const TextStyle(color: Colors.white)),
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _cancelSearch() async {
+    _timer?.cancel();
+    if (_match != null) {
+      await ref.read(lobbyProvider.notifier).cancelMatchmaking(_match!.id);
+      ref.read(gameProvider.notifier).leaveGame();
+    }
+    if (mounted) {
+      Navigator.pop(context);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final gameState = ref.watch(gameProvider);
+    final currentMatch = gameState.currentMatch;
+
+    if (currentMatch != null && currentMatch.status == 'RUNNING') {
+      _timer?.cancel();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (Navigator.canPop(context)) {
+          Navigator.pop(context);
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const GameScreen()),
+          );
+        }
+      });
+    }
+
+    return PopScope(
+      canPop: false,
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F172A).withOpacity(0.95),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.teal.withOpacity(0.3), width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.teal.withOpacity(0.15),
+                blurRadius: 20,
+                spreadRadius: 2,
+              )
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox(
+                    width: 90,
+                    height: 90,
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.teal[400]!),
+                      strokeWidth: 4,
+                    ),
+                  ),
+                  Text(
+                    _secondsLeft.toString().padLeft(2, '0'),
+                    style: GoogleFonts.outfit(
+                      color: Colors.white,
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 28),
+              Text(
+                'Tournament Matchmaking',
+                style: GoogleFonts.outfit(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _statusText,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  color: Colors.white70,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 28),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: _cancelSearch,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: BorderSide(color: Colors.white.withOpacity(0.15)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    'Cancel Search',
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

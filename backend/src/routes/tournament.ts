@@ -7,6 +7,7 @@ import { Transaction } from '../models/Transaction';
 import { User } from '../models/User';
 import { authMiddleware, adminMiddleware, AuthRequest } from '../middleware/authMiddleware';
 import { isTransactionSupported } from '../config/db';
+import { getIoInstance } from '../sockets/gameSocket';
 
 const router = Router();
 
@@ -205,61 +206,6 @@ router.post('/admin/start', authMiddleware, adminMiddleware, async (req: AuthReq
       tournament.currentRound = 1;
       tournament.roundStartTime = new Date();
 
-      // Simple matchmaking: pair players sequentially
-      // For Swiss/Arena, we shuffle or sort by score. For Round 1, pair sequentially.
-      const activeUserIds = activeParticipants.map(p => p.userId);
-      const activeUsers = await User.find({ _id: { $in: activeUserIds } }).select('_id title');
-      const titleMap = new Map<string, string>();
-      activeUsers.forEach(u => {
-        if (u.title) {
-          titleMap.set(u._id.toString(), u.title);
-        }
-      });
-
-      const matchesToCreate = [];
-      for (let i = 0; i < activeParticipants.length; i += 2) {
-        if (i + 1 < activeParticipants.length) {
-          const playerA = activeParticipants[i];
-          const playerB = activeParticipants[i + 1];
-
-          // Create a Match document for the tournament pairing
-          const tournamentMatch = new Match({
-            whitePlayerId: playerA.userId,
-            blackPlayerId: playerB.userId,
-            whiteUsername: playerA.username,
-            blackUsername: playerB.username,
-            whiteTitle: titleMap.get(playerA.userId.toString()),
-            blackTitle: titleMap.get(playerB.userId.toString()),
-            entryFee: 0, // already paid at tournament signup
-            prizePool: 0, // paid at tournament end
-            timeControl: 600, // 10 minutes default
-            status: 'RUNNING'
-          });
-
-          matchesToCreate.push(tournamentMatch);
-        } else {
-          // Odd player gets a bye: they advance automatically (this is for STANDARD, since LEAGUE pairs with bot)
-          const oddPlayer = activeParticipants[i];
-          const index = tournament.participants.findIndex(p => p.userId.toString() === oddPlayer.userId.toString());
-          if (index !== -1) {
-            tournament.participants[index].score += 1; // 1 point for the bye
-          }
-        }
-      }
-
-      // Save matches inside transaction
-      const savedMatches = await Match.insertMany(matchesToCreate, session ? { session } : {});
-
-      // Add pairings to tournament brackets
-      savedMatches.forEach((savedMatch, idx) => {
-        tournament.brackets.push({
-          round: 1,
-          matchId: savedMatch._id as mongoose.Types.ObjectId,
-          playerA: savedMatch.whitePlayerId!,
-          playerB: savedMatch.blackPlayerId!,
-        });
-      });
-
       await tournament.save(session ? { session } : {});
 
       if (session) {
@@ -267,7 +213,7 @@ router.post('/admin/start', authMiddleware, adminMiddleware, async (req: AuthReq
         session.endSession();
       }
 
-      res.status(200).json({ success: true, tournament, matchesCreatedCount: savedMatches.length });
+      res.status(200).json({ success: true, tournament, matchesCreatedCount: 0 });
     } catch (txError) {
       if (session) {
         await session.abortTransaction();
@@ -278,6 +224,129 @@ router.post('/admin/start', authMiddleware, adminMiddleware, async (req: AuthReq
   } catch (error) {
     console.error('Admin start tournament error:', error);
     res.status(500).json({ success: false, error: 'Server error starting tournament.' });
+  }
+});
+
+// 5. Matchmaking for active tournament round
+router.post('/matchmake', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { tournamentId } = req.body;
+    const userId = req.user?.id;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      res.status(404).json({ success: false, error: 'User not found.' });
+      return;
+    }
+
+    const tournament = await Tournament.findById(tournamentId);
+    if (!tournament) {
+      res.status(404).json({ success: false, error: 'Tournament not found.' });
+      return;
+    }
+
+    if (tournament.status !== 'ACTIVE') {
+      res.status(400).json({ success: false, error: 'Tournament is not active.' });
+      return;
+    }
+
+    // Check if user is registered participant
+    const isParticipant = tournament.participants.some(p => p.userId.toString() === userId && p.status === 'ACTIVE');
+    if (!isParticipant) {
+      res.status(400).json({ success: false, error: 'You are not a participant in this tournament.' });
+      return;
+    }
+
+    // Check if user already played in the current round
+    const hasPlayed = tournament.brackets.some(
+      b => b.round === tournament.currentRound && 
+      (b.playerA.toString() === userId || b.playerB.toString() === userId)
+    );
+    if (hasPlayed) {
+      res.status(400).json({ success: false, error: 'You have already played your match for this round.' });
+      return;
+    }
+
+    // 1. Search for a WAITING match for this tournament and current round
+    let existingMatch = await Match.findOne({
+      status: 'WAITING',
+      tournamentId: tournament._id,
+      round: tournament.currentRound,
+      $or: [
+        { whitePlayerId: null },
+        { blackPlayerId: null }
+      ],
+      whitePlayerId: { $ne: new mongoose.Types.ObjectId(userId) },
+      blackPlayerId: { $ne: new mongoose.Types.ObjectId(userId) }
+    });
+
+    if (existingMatch) {
+      // Join existing match
+      if (!existingMatch.whitePlayerId) {
+        existingMatch.whitePlayerId = new mongoose.Types.ObjectId(userId);
+        existingMatch.whiteUsername = user.username;
+        existingMatch.whiteTitle = user.title;
+        existingMatch.whiteElo = user.elo;
+      } else {
+        existingMatch.blackPlayerId = new mongoose.Types.ObjectId(userId);
+        existingMatch.blackUsername = user.username;
+        existingMatch.blackTitle = user.title;
+        existingMatch.blackElo = user.elo;
+      }
+
+      existingMatch.status = 'RUNNING';
+      await existingMatch.save();
+
+      // Record in brackets
+      tournament.brackets.push({
+        round: tournament.currentRound,
+        matchId: existingMatch._id as mongoose.Types.ObjectId,
+        playerA: existingMatch.whitePlayerId!,
+        playerB: existingMatch.blackPlayerId!,
+      });
+      await tournament.save();
+
+      // Broadcast update
+      const io = getIoInstance();
+      if (io) {
+        io.to(existingMatch._id.toString()).emit('match_state', existingMatch);
+      }
+
+      res.status(200).json({
+        success: true,
+        match: existingMatch
+      });
+      return;
+    }
+
+    // 2. Create a new WAITING match
+    const isWhite = Math.random() > 0.5;
+    const newMatch = new Match({
+      whitePlayerId: isWhite ? new mongoose.Types.ObjectId(userId) : null,
+      blackPlayerId: isWhite ? null : new mongoose.Types.ObjectId(userId),
+      whiteUsername: isWhite ? user.username : null,
+      blackUsername: isWhite ? null : user.username,
+      whiteTitle: isWhite ? user.title : null,
+      blackTitle: isWhite ? null : user.title,
+      whiteElo: isWhite ? user.elo : null,
+      blackElo: isWhite ? null : user.elo,
+      entryFee: 0,
+      prizePool: 0,
+      timeControl: 600, // 10 minutes
+      status: 'WAITING',
+      tournamentId: tournament._id,
+      round: tournament.currentRound
+    });
+
+    await newMatch.save();
+
+    res.status(201).json({
+      success: true,
+      match: newMatch
+    });
+  } catch (error) {
+    console.error('Tournament matchmaking error:', error);
+    res.status(500).json({ success: false, error: 'Server error during tournament matchmaking.' });
   }
 });
 

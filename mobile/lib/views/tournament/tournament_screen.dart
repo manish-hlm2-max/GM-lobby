@@ -134,7 +134,7 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
                                     ),
                                   ],
                                 ),
-                                if (tourn.type == 'LEAGUE_5_DAY' && tourn.status == 'ACTIVE' && tourn.roundStartTime != null) ...[
+                                if (tourn.status == 'ACTIVE' && tourn.roundStartTime != null && isRegistered) ...[
                                   const SizedBox(height: 8),
                                   Row(
                                     children: [

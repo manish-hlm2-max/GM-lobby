@@ -497,111 +497,113 @@ const concludeMatch = async (
         if (pWinner) pWinner.score += 1;
       }
 
-      // 3.3. Check if all matches in the current round are completed
-      const currentRoundBrackets = tournament.brackets.filter(b => b.round === tournament.currentRound);
-      const currentRoundMatchIds = currentRoundBrackets.map(b => b.matchId);
+      // 3.3. Check if all matches in the current round are completed (only for standard bracket/Swiss tournaments)
+      if (tournament.type !== 'LEAGUE_5_DAY') {
+        const currentRoundBrackets = tournament.brackets.filter(b => b.round === tournament.currentRound);
+        const currentRoundMatchIds = currentRoundBrackets.map(b => b.matchId);
 
-      // Fetch all these matches inside session
-      const currentRoundMatches = await Match.find({
-        _id: { $in: currentRoundMatchIds }
-      }).session(session);
+        // Fetch all these matches inside session
+        const currentRoundMatches = await Match.find({
+          _id: { $in: currentRoundMatchIds }
+        }).session(session);
 
-      const allCompleted = currentRoundMatches.every(m => {
-        if (m._id.toString() === match._id.toString()) {
-          return true; // this match is current, so it's completed
-        }
-        return m.status === 'COMPLETED' || m.status === 'ABORTED';
-      });
-
-      if (allCompleted) {
-        console.log(`concludeMatch: All matches of Round ${tournament.currentRound} in tournament ${tournament._id} are completed.`);
-
-        if (tournament.currentRound >= tournament.roundCount) {
-          // Conclude the tournament!
-          tournament.status = 'COMPLETED';
-          
-          let maxScore = -1;
-          tournament.participants.forEach(p => {
-            if (p.score > maxScore) maxScore = p.score;
-          });
-
-          const winners = tournament.participants.filter(p => p.score === maxScore && p.status === 'ACTIVE');
-          if (winners.length > 0 && tournament.totalPrize > 0) {
-            const payoutPerWinner = tournament.totalPrize / winners.length;
-            for (const winner of winners) {
-              await Wallet.findOneAndUpdate(
-                { userId: winner.userId },
-                { $inc: { balance: payoutPerWinner } },
-                { session: session || undefined }
-              );
-
-              // Log transaction
-              await new Transaction({
-                userId: winner.userId,
-                amount: payoutPerWinner,
-                type: 'TOURNAMENT_PRIZE',
-                status: 'SUCCESS',
-                description: `Prize payout for winning tournament: ${tournament.name}`,
-                referenceId: tournament._id.toString()
-              }).save({ session: session || undefined });
-            }
+        const allCompleted = currentRoundMatches.every(m => {
+          if (m._id.toString() === match._id.toString()) {
+            return true; // this match is current, so it's completed
           }
-          console.log(`concludeMatch: Concluded tournament ${tournament._id}. Winners count: ${winners.length}`);
-        } else {
-          // Generate next round
-          tournament.currentRound += 1;
-          const activeParticipants = tournament.participants.filter(p => p.status === 'ACTIVE');
-          // Sort Swiss-style (by score desc)
-          activeParticipants.sort((a, b) => b.score - a.score);
+          return m.status === 'COMPLETED' || m.status === 'ABORTED';
+        });
 
-          // Fetch titles for active participants
-          const activeUserIds = activeParticipants.map(p => p.userId);
-          const activeUsers = await User.find({ _id: { $in: activeUserIds } }).select('_id title');
-          const titleMap = new Map<string, string>();
-          activeUsers.forEach(u => {
-            if (u.title) {
-              titleMap.set(u._id.toString(), u.title);
-            }
-          });
+        if (allCompleted) {
+          console.log(`concludeMatch: All matches of Round ${tournament.currentRound} in tournament ${tournament._id} are completed.`);
 
-          const matchesToCreate = [];
-          for (let i = 0; i < activeParticipants.length; i += 2) {
-            if (i + 1 < activeParticipants.length) {
-              const playerA = activeParticipants[i];
-              const playerB = activeParticipants[i + 1];
-
-              const newMatch = new Match({
-                whitePlayerId: playerA.userId,
-                blackPlayerId: playerB.userId,
-                whiteUsername: playerA.username,
-                blackUsername: playerB.username,
-                whiteTitle: titleMap.get(playerA.userId.toString()),
-                blackTitle: titleMap.get(playerB.userId.toString()),
-                entryFee: 0,
-                prizePool: 0,
-                timeControl: 600, // standard 10 mins
-                status: 'RUNNING'
-              });
-              matchesToCreate.push(newMatch);
-            } else {
-              // Odd player gets a bye: they get 1 point and advance
-              const oddPlayer = activeParticipants[i];
-              oddPlayer.score += 1;
-            }
-          }
-
-          if (matchesToCreate.length > 0) {
-            const savedMatches = await Match.insertMany(matchesToCreate, session ? { session } : {});
-            savedMatches.forEach(m => {
-              tournament.brackets.push({
-                round: tournament.currentRound,
-                matchId: m._id as mongoose.Types.ObjectId,
-                playerA: m.whitePlayerId!,
-                playerB: m.blackPlayerId!,
-              });
+          if (tournament.currentRound >= tournament.roundCount) {
+            // Conclude the tournament!
+            tournament.status = 'COMPLETED';
+            
+            let maxScore = -1;
+            tournament.participants.forEach(p => {
+              if (p.score > maxScore) maxScore = p.score;
             });
+
+            const winners = tournament.participants.filter(p => p.score === maxScore && p.status === 'ACTIVE');
+            if (winners.length > 0 && tournament.totalPrize > 0) {
+              const payoutPerWinner = tournament.totalPrize / winners.length;
+              for (const winner of winners) {
+                await Wallet.findOneAndUpdate(
+                  { userId: winner.userId },
+                  { $inc: { balance: payoutPerWinner } },
+                  { session: session || undefined }
+                );
+
+                // Log transaction
+                await new Transaction({
+                  userId: winner.userId,
+                  amount: payoutPerWinner,
+                  type: 'TOURNAMENT_PRIZE',
+                  status: 'SUCCESS',
+                  description: `Prize payout for winning tournament: ${tournament.name}`,
+                  referenceId: tournament._id.toString()
+                }).save({ session: session || undefined });
+              }
+            }
+            console.log(`concludeMatch: Concluded tournament ${tournament._id}. Winners count: ${winners.length}`);
+          } else {
+            // Generate next round
+            tournament.currentRound += 1;
+            const activeParticipants = tournament.participants.filter(p => p.status === 'ACTIVE');
+            // Sort Swiss-style (by score desc)
+            activeParticipants.sort((a, b) => b.score - a.score);
+
+            // Fetch titles for active participants
+            const activeUserIds = activeParticipants.map(p => p.userId);
+            const activeUsers = await User.find({ _id: { $in: activeUserIds } }).select('_id title');
+            const titleMap = new Map<string, string>();
+            activeUsers.forEach(u => {
+              if (u.title) {
+                titleMap.set(u._id.toString(), u.title);
+              }
+            });
+
+            const matchesToCreate = [];
+            for (let i = 0; i < activeParticipants.length; i += 2) {
+              if (i + 1 < activeParticipants.length) {
+                const playerA = activeParticipants[i];
+                const playerB = activeParticipants[i + 1];
+
+                const newMatch = new Match({
+                  whitePlayerId: playerA.userId,
+                  blackPlayerId: playerB.userId,
+                  whiteUsername: playerA.username,
+                  blackUsername: playerB.username,
+                  whiteTitle: titleMap.get(playerA.userId.toString()),
+                  blackTitle: titleMap.get(playerB.userId.toString()),
+                  entryFee: 0,
+                  prizePool: 0,
+                  timeControl: 600, // standard 10 mins
+                  status: 'RUNNING'
+                });
+                matchesToCreate.push(newMatch);
+              } else {
+                // Odd player gets a bye: they get 1 point and advance
+                const oddPlayer = activeParticipants[i];
+                oddPlayer.score += 1;
+              }
+            }
+
+            if (matchesToCreate.length > 0) {
+              const savedMatches = await Match.insertMany(matchesToCreate, session ? { session } : {});
+              savedMatches.forEach(m => {
+                tournament.brackets.push({
+                  round: tournament.currentRound,
+                  matchId: m._id as mongoose.Types.ObjectId,
+                  playerA: m.whitePlayerId!,
+                  playerB: m.blackPlayerId!,
+                });
+              });
+            }
+            console.log(`concludeMatch: Scheduled Round ${tournament.currentRound} for tournament ${tournament._id} with ${matchesToCreate.length} matches.`);
           }
-          console.log(`concludeMatch: Scheduled Round ${tournament.currentRound} for tournament ${tournament._id} with ${matchesToCreate.length} matches.`);
         }
       }
 
@@ -951,80 +953,7 @@ export const startTournamentScheduler = (io: Server) => {
               // Start next round!
               tournament.currentRound += 1;
               tournament.roundStartTime = new Date();
-
-              // Setup pairings for the next round
-              let activeParticipants = tournament.participants.filter(p => p.status === 'ACTIVE');
-
-              // If league tournament and odd number of participants, pair the odd player with a bot
-              if (activeParticipants.length % 2 !== 0) {
-                const bots = await User.find({ isBot: true });
-                if (bots.length > 0) {
-                  const randomBot = bots[Math.floor(Math.random() * bots.length)];
-                  const isBotRegistered = tournament.participants.some(p => p.userId.toString() === randomBot._id.toString());
-                  if (!isBotRegistered) {
-                    const newParticipant = {
-                      userId: randomBot._id,
-                      username: randomBot.username,
-                      score: 0,
-                      status: 'ACTIVE' as const
-                    };
-                    tournament.participants.push(newParticipant);
-                    activeParticipants.push(newParticipant);
-                  } else {
-                    const pIndex = tournament.participants.findIndex(p => p.userId.toString() === randomBot._id.toString());
-                    tournament.participants[pIndex].status = 'ACTIVE';
-                    activeParticipants.push(tournament.participants[pIndex]);
-                  }
-                }
-              }
-
-              // Simple Swiss-style matchmaking (sort by score desc and pair sequentially)
-              activeParticipants.sort((a, b) => b.score - a.score);
-
-              const activeUserIds = activeParticipants.map(p => p.userId);
-              const activeUsers = await User.find({ _id: { $in: activeUserIds } }).select('_id title');
-              const titleMap = new Map<string, string>();
-              activeUsers.forEach(u => {
-                if (u.title) {
-                  titleMap.set(u._id.toString(), u.title);
-                }
-              });
-
-              const matchesToCreate = [];
-              for (let i = 0; i < activeParticipants.length; i += 2) {
-                if (i + 1 < activeParticipants.length) {
-                  const playerA = activeParticipants[i];
-                  const playerB = activeParticipants[i + 1];
-
-                  const newMatch = new Match({
-                    whitePlayerId: playerA.userId,
-                    blackPlayerId: playerB.userId,
-                    whiteUsername: playerA.username,
-                    blackUsername: playerB.username,
-                    whiteTitle: titleMap.get(playerA.userId.toString()),
-                    blackTitle: titleMap.get(playerB.userId.toString()),
-                    entryFee: 0,
-                    prizePool: 0,
-                    timeControl: 600,
-                    status: 'RUNNING'
-                  });
-                  matchesToCreate.push(newMatch);
-                }
-              }
-
-              if (matchesToCreate.length > 0) {
-                const savedMatches = await Match.insertMany(matchesToCreate, session ? { session } : {});
-                savedMatches.forEach(m => {
-                  tournament.brackets.push({
-                    round: tournament.currentRound,
-                    matchId: m._id as mongoose.Types.ObjectId,
-                    playerA: m.whitePlayerId!,
-                    playerB: m.blackPlayerId!,
-                  });
-                });
-              }
-
-              console.log(`Tournament ${tournament.name} round advanced to ${tournament.currentRound}. Matches created: ${matchesToCreate.length}`);
+              console.log(`Tournament ${tournament.name} round advanced to ${tournament.currentRound}. Matchmaking will be done on-demand.`);
             }
 
             await tournament.save({ session: session || undefined });

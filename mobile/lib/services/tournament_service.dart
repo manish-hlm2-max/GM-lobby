@@ -57,4 +57,32 @@ class TournamentService {
       return {'success': false, 'error': e.toString()};
     }
   }
+
+  Future<Map<String, dynamic>> matchmakeTournament(String tournamentId) async {
+    try {
+      final token = await _authService.getToken();
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/api/tournament/matchmake'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'tournamentId': tournamentId}),
+      );
+
+      final data = jsonDecode(response.body);
+      if (data['success'] == true) {
+        return {
+          'success': true,
+          'match': data['match'],
+        };
+      }
+      return {
+        'success': false,
+        'error': data['error'] ?? 'Matchmaking failed.',
+      };
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
+  }
 }
