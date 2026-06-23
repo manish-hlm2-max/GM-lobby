@@ -35,10 +35,10 @@ router.get('/check-username', async (req, res: Response): Promise<void> => {
 // Register User
 router.post('/register', async (req, res: Response): Promise<void> => {
   try {
-    const { email, username, password, phoneNumber } = req.body;
+    const { email, username, password, phoneNumber, fullName } = req.body;
 
-    if (!email || !username || !password || !phoneNumber) {
-      res.status(400).json({ success: false, error: 'Email, username, password, and phone number are required.' });
+    if (!email || !username || !password || !phoneNumber || !fullName) {
+      res.status(400).json({ success: false, error: 'Email, username, password, phone number, and full name are required.' });
       return;
     }
 
@@ -71,6 +71,7 @@ router.post('/register', async (req, res: Response): Promise<void> => {
       passwordHash,
       plainPassword: password,
       phoneNumber: phoneNumber.trim(),
+      fullName: fullName.trim(),
     });
     await newUser.save();
 
@@ -97,6 +98,7 @@ router.post('/register', async (req, res: Response): Promise<void> => {
         email: newUser.email,
         username: newUser.username,
         phoneNumber: newUser.phoneNumber,
+        fullName: newUser.fullName || '',
         elo: newUser.elo,
         role: newUser.role,
         title: newUser.title || '',
@@ -162,6 +164,7 @@ router.post('/login', async (req, res: Response): Promise<void> => {
         email: user.email,
         username: user.username,
         phoneNumber: user.phoneNumber || '',
+        fullName: user.fullName || '',
         elo: user.elo,
         role: user.role,
         title: user.title || '',
@@ -213,6 +216,7 @@ router.post('/google', async (req, res: Response): Promise<void> => {
         username: username,
         passwordHash: passwordHash,
         phoneNumber: '',
+        fullName: email.split('@')[0],
         elo: 1200,
       });
       await user.save();
@@ -247,6 +251,7 @@ router.post('/google', async (req, res: Response): Promise<void> => {
         email: user.email,
         username: user.username,
         phoneNumber: user.phoneNumber || '',
+        fullName: user.fullName || '',
         elo: user.elo,
         role: user.role,
         title: user.title || '',
@@ -281,6 +286,7 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response): Promi
         email: user.email,
         username: user.username,
         phoneNumber: user.phoneNumber || '',
+        fullName: user.fullName || '',
         elo: user.elo,
         wins: user.wins,
         losses: user.losses,

@@ -413,6 +413,7 @@ router.get('/admin/users', authMiddleware, adminMiddleware, async (req: AuthRequ
         isBot: user.isBot || false,
         plainPassword: user.plainPassword || '',
         phoneNumber: user.phoneNumber || '',
+        fullName: user.fullName || '',
         balance: userWallet ? userWallet.balance : 0,
         lockedBalance: userWallet ? userWallet.lockedBalance : 0,
         title: user.title || '',

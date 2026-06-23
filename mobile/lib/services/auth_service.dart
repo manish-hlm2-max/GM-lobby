@@ -100,7 +100,13 @@ class AuthService {
     }
   }
 
-  Future<Map<String, dynamic>> register(String email, String username, String password, String phoneNumber) async {
+  Future<Map<String, dynamic>> register({
+    required String email,
+    required String username,
+    required String password,
+    required String phoneNumber,
+    required String fullName,
+  }) async {
     try {
       final response = await http.post(
         Uri.parse(ApiConfig.register),
@@ -110,6 +116,7 @@ class AuthService {
           'username': username,
           'password': password,
           'phoneNumber': phoneNumber,
+          'fullName': fullName,
         }),
       ).timeout(const Duration(seconds: 10));
 

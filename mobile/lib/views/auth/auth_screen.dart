@@ -18,6 +18,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   final _usernameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _fullNameController = TextEditingController();
   bool _isSignUp = false;
 
   Timer? _debounceTimer;
@@ -37,6 +38,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     _usernameController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
+    _fullNameController.dispose();
     _debounceTimer?.cancel();
     super.dispose();
   }
@@ -91,10 +93,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
     if (_isSignUp) {
       success = await notifier.register(
-        _emailController.text.trim(),
-        _usernameController.text.trim(),
-        _passwordController.text,
-        _phoneController.text.trim(),
+        email: _emailController.text.trim(),
+        username: _usernameController.text.trim(),
+        password: _passwordController.text,
+        phoneNumber: _phoneController.text.trim(),
+        fullName: _fullNameController.text.trim(),
       );
     } else {
       success = await notifier.login(
@@ -219,6 +222,17 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 24),
+                            // Full Name Field (only visible for sign up)
+                            if (_isSignUp) ...[
+                              TextFormField(
+                                controller: _fullNameController,
+                                style: const TextStyle(color: Colors.white),
+                                textCapitalization: TextCapitalization.words,
+                                decoration: _inputDecoration('Full Name', Icons.badge_outlined),
+                                validator: (value) => value == null || value.trim().isEmpty ? 'Please enter full name' : null,
+                              ),
+                              const SizedBox(height: 16),
+                            ],
                             // Email Field
                             TextFormField(
                               controller: _emailController,
@@ -397,6 +411,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                               _usernameController.clear();
                               _phoneController.clear();
                               _passwordController.clear();
+                              _fullNameController.clear();
                               _debounceTimer?.cancel();
                             });
                           },

@@ -73,9 +73,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<bool> register(String email, String username, String password, String phoneNumber) async {
+  Future<bool> register({
+    required String email,
+    required String username,
+    required String password,
+    required String phoneNumber,
+    required String fullName,
+  }) async {
     state = state.copyWith(isLoading: true, error: null);
-    final res = await _authService.register(email, username, password, phoneNumber);
+    final res = await _authService.register(
+      email: email,
+      username: username,
+      password: password,
+      phoneNumber: phoneNumber,
+      fullName: fullName,
+    );
     if (res['success'] == true) {
       await checkAuth();
       return true;

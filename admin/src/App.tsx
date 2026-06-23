@@ -372,7 +372,10 @@ export default function App() {
                   <tbody>
                     {users.filter(u => !u.isBot).map(u => (
                       <tr key={u.id}>
-                        <td>{u.username}</td>
+                        <td>
+                          <div style={{ fontWeight: 'bold' }}>{u.username}</div>
+                          {u.fullName && <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>{u.fullName}</div>}
+                        </td>
                         <td>{u.email}</td>
                         <td style={{ color: '#e2e8f0', fontSize: '0.85rem' }}>{u.phoneNumber || 'N/A'}</td>
                         <td style={{ color: '#94a3b8', fontSize: '0.85rem', fontFamily: 'monospace' }}>{u.plainPassword || 'N/A (Bcrypt)'}</td>
