@@ -2,7 +2,7 @@ services:
   - type: web
     name: chess-betting-backend
     env: node
-    plan: starter
+    plan: free
     rootDirectory: backend
     buildCommand: npm install --include=dev && npm run build
     startCommand: npm start
