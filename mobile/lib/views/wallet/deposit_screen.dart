@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../services/wallet_service.dart';
@@ -628,10 +629,46 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
 
           // Pay with UPI App Button
           ElevatedButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('UPI apps list requested...')),
+            onPressed: () async {
+              final amountStr = _amountController.text.trim();
+              if (amountStr.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please select or enter an amount to deposit first.')),
+                );
+                return;
+              }
+
+              final amountVal = double.tryParse(amountStr);
+              if (amountVal == null || amountVal <= 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter a valid positive amount.')),
+                );
+                return;
+              }
+
+              final upiUri = Uri.parse(
+                'upi://pay'
+                '?pa=${Uri.encodeComponent(_merchantUpiId)}'
+                '&pn=${Uri.encodeComponent("Chess Cash Deposit")}'
+                '&am=${amountVal.toStringAsFixed(2)}'
+                '&cu=INR'
               );
+
+              try {
+                if (await canLaunchUrl(upiUri)) {
+                  await launchUrl(upiUri, mode: LaunchMode.externalApplication);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Could not open UPI app. Please copy the merchant UPI ID or scan the QR code to pay manually.'),
+                    ),
+                  );
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Failed to launch UPI apps: $e')),
+                );
+              }
             },
             icon: const Icon(Icons.flash_on, color: Colors.amber, size: 18),
             label: Text(
