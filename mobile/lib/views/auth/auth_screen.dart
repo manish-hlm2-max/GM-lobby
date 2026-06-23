@@ -575,7 +575,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                         (email) async {
                           setModalState(() { isSubmitting = true; });
                           final success = await ref.read(authProvider.notifier).loginWithGoogle(email);
-                          if (success && mounted) {
+                          if (success) {
                             Navigator.pop(context);
                           } else {
                             setModalState(() { isSubmitting = false; });
@@ -593,7 +593,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                         (email) async {
                           setModalState(() { isSubmitting = true; });
                           final success = await ref.read(authProvider.notifier).loginWithGoogle(email);
-                          if (success && mounted) {
+                          if (success) {
                             Navigator.pop(context);
                           } else {
                             setModalState(() { isSubmitting = false; });
@@ -655,7 +655,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                             setModalState(() { isSubmitting = true; });
                             final email = emailController.text.trim();
                             final success = await ref.read(authProvider.notifier).loginWithGoogle(email);
-                            if (success && mounted) {
+                            if (success) {
                               Navigator.pop(context);
                             } else {
                               setModalState(() { isSubmitting = false; });
