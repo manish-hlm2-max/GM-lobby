@@ -19,11 +19,12 @@ export default function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('admin_token'));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [activeTab, setActiveTab] = useState<'users' | 'withdrawals' | 'tournaments' | 'matches'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'deposits' | 'withdrawals' | 'tournaments' | 'matches'>('users');
   
   // Data state
   const [users, setUsers] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [deposits, setDeposits] = useState<any[]>([]);
   const [tournaments, setTournaments] = useState<any[]>([]);
   const [matches, setMatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -55,10 +56,11 @@ export default function App() {
       if (activeTab === 'users') {
         const res = await axios.get(`${API_BASE}/wallet/admin/users`, { headers });
         setUsers(res.data.users);
-      } else if (activeTab === 'withdrawals') {
+      } else if (activeTab === 'withdrawals' || activeTab === 'deposits') {
         const res = await axios.get(`${API_BASE}/wallet/admin/transactions`, { headers });
-        // Filter withdrawals
+        // Filter transactions
         setTransactions(res.data.transactions.filter((tx: any) => tx.type === 'WITHDRAWAL'));
+        setDeposits(res.data.transactions.filter((tx: any) => tx.type === 'DEPOSIT'));
       } else if (activeTab === 'tournaments') {
         const res = await axios.get(`${API_BASE}/tournament`, { headers });
         setTournaments(res.data.tournaments);
@@ -103,6 +105,16 @@ export default function App() {
     try {
       const headers = { Authorization: `Bearer ${token}` };
       await axios.post(`${API_BASE}/wallet/admin/withdrawal/${action}`, { transactionId }, { headers });
+      fetchDashboardData();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Action failed.');
+    }
+  };
+
+  const handleDepositAction = async (transactionId: string, action: 'approve' | 'reject') => {
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      await axios.post(`${API_BASE}/wallet/admin/deposit/${action}`, { transactionId }, { headers });
       fetchDashboardData();
     } catch (err: any) {
       alert(err.response?.data?.error || 'Action failed.');
@@ -209,6 +221,9 @@ export default function App() {
         <div className="nav-link-list" style={{ flex: 1 }}>
           <div className={`nav-link ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>
             <Users className="nav-icon" /> Users Management
+          </div>
+          <div className={`nav-link ${activeTab === 'deposits' ? 'active' : ''}`} onClick={() => setActiveTab('deposits')}>
+            <DollarSign className="nav-icon" /> Deposits ({deposits.filter(t => t.status === 'PENDING').length})
           </div>
           <div className={`nav-link ${activeTab === 'withdrawals' ? 'active' : ''}`} onClick={() => setActiveTab('withdrawals')}>
             <Wallet className="nav-icon" /> Withdrawals ({transactions.filter(t => t.status === 'PENDING').length})
@@ -466,6 +481,53 @@ export default function App() {
                               <Check style={{ width: '14px', height: '14px', marginRight: '4px' }} /> Approve
                             </button>
                             <button onClick={() => handleWithdrawalAction(tx._id, 'reject')} style={{ backgroundColor: '#ef4444', border: 'none', padding: '6px 12px', borderRadius: '6px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                              <X style={{ width: '14px', height: '14px', marginRight: '4px' }} /> Reject
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'deposits' && (
+          <div className="card">
+            <h3>Pending Cash Deposits</h3>
+            {loading ? <p>Loading Transactions...</p> : deposits.length === 0 ? <p style={{ color: '#64748b' }}>No deposit requests found.</p> : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Email</th>
+                    <th>Amount Deposited</th>
+                    <th>UTR / Reference ID</th>
+                    <th>Requested Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {deposits.map(tx => (
+                    <tr key={tx._id}>
+                      <td>{tx.userId?.username}</td>
+                      <td>{tx.userId?.email}</td>
+                      <td style={{ color: '#10b981', fontWeight: 'bold' }}>₹{tx.amount.toFixed(2)}</td>
+                      <td style={{ color: '#e2e8f0', fontSize: '0.9rem', fontFamily: 'monospace' }}>{tx.referenceId || 'Mock / UTR N/A'}</td>
+                      <td>{new Date(tx.createdAt).toLocaleString()}</td>
+                      <td>
+                        <span className={`badge badge-${tx.status.toLowerCase()}`}>{tx.status}</span>
+                      </td>
+                      <td>
+                        {tx.status === 'PENDING' && (
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button onClick={() => handleDepositAction(tx._id, 'approve')} style={{ backgroundColor: '#10b981', border: 'none', padding: '6px 12px', borderRadius: '6px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                              <Check style={{ width: '14px', height: '14px', marginRight: '4px' }} /> Approve
+                            </button>
+                            <button onClick={() => handleDepositAction(tx._id, 'reject')} style={{ backgroundColor: '#ef4444', border: 'none', padding: '6px 12px', borderRadius: '6px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                               <X style={{ width: '14px', height: '14px', marginRight: '4px' }} /> Reject
                             </button>
                           </div>

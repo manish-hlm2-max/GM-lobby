@@ -33,29 +33,17 @@ router.post('/deposit', authMiddleware, async (req: AuthRequest, res: Response):
         userId,
         amount,
         type: 'DEPOSIT',
-        status: isManual ? 'PENDING' : 'SUCCESS',
+        status: 'PENDING',
         referenceId: referenceId || undefined,
         description: isManual 
           ? `Manual Deposit request via UPI. UTR: ${referenceId}` 
-          : 'Deposited cash via mock gateway.',
+          : 'Deposited cash via mock gateway (Pending Admin Approval).',
       });
       await transaction.save(session ? { session } : {});
 
-      let currentBalance = 0;
-
-      if (!isManual) {
-        // Atomically update wallet balance for instant/legacy mode
-        const wallet = await Wallet.findOneAndUpdate(
-          { userId },
-          { $inc: { balance: amount } },
-          { new: true, upsert: true, ...(session ? { session } : {}) }
-        );
-        currentBalance = wallet.balance;
-      } else {
-        // For manual, do not credit balance until admin approval
-        const wallet = await Wallet.findOne({ userId }).session(session || null);
-        currentBalance = wallet ? wallet.balance : 0;
-      }
+      // For all deposits, do not credit balance until admin approval
+      const wallet = await Wallet.findOne({ userId }).session(session || null);
+      const currentBalance = wallet ? wallet.balance : 0;
 
       if (session) {
         await session.commitTransaction();
@@ -278,7 +266,7 @@ router.post('/admin/deposit/:action', authMiddleware, adminMiddleware, async (re
 
     try {
       if (action === 'approve') {
-        // Successful manual deposit -> credit wallet balance
+        // Successful deposit -> credit wallet balance
         const wallet = await Wallet.findOneAndUpdate(
           { userId: transaction.userId },
           { $inc: { balance: transaction.amount } },
@@ -286,13 +274,13 @@ router.post('/admin/deposit/:action', authMiddleware, adminMiddleware, async (re
         );
 
         transaction.status = 'SUCCESS';
-        transaction.description = 'Manual deposit approved and credited.';
+        transaction.description = `${transaction.description} - Approved and credited by admin`;
         await transaction.save(session ? { session } : {});
 
       } else {
-        // Rejected manual deposit -> mark as FAILED
+        // Rejected deposit -> mark as FAILED
         transaction.status = 'FAILED';
-        transaction.description = 'Manual deposit rejected by administrator.';
+        transaction.description = `${transaction.description} - Rejected by admin`;
         await transaction.save(session ? { session } : {});
       }
 
