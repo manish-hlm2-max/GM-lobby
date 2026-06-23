@@ -1,13 +1,17 @@
 import { Schema, model, Document, Types } from 'mongoose';
 
 export type TournamentStatus = 'UPCOMING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+export type TournamentType = 'STANDARD' | 'LEAGUE_5_DAY';
 
 export interface ITournament extends Document {
   name: string;
   entryFee: number;
   totalPrize: number;
   status: TournamentStatus;
+  type: TournamentType;
   scheduledStartTime: Date;
+  roundStartTime?: Date;
+  roundDurationSeconds: number;
   roundCount: number;
   currentRound: number;
   participants: Array<{
@@ -31,7 +35,10 @@ const TournamentSchema = new Schema<ITournament>({
   entryFee: { type: Number, default: 0 },
   totalPrize: { type: Number, default: 0 },
   status: { type: String, enum: ['UPCOMING', 'ACTIVE', 'COMPLETED', 'CANCELLED'], default: 'UPCOMING' },
+  type: { type: String, enum: ['STANDARD', 'LEAGUE_5_DAY'], default: 'STANDARD' },
   scheduledStartTime: { type: Date, required: true },
+  roundStartTime: { type: Date },
+  roundDurationSeconds: { type: Number, default: 43200 }, // 12 hours default
   roundCount: { type: Number, default: 3 },
   currentRound: { type: Number, default: 0 },
   participants: [

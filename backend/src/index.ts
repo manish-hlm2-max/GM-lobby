@@ -12,7 +12,7 @@ import authRoutes from './routes/auth';
 import walletRoutes from './routes/wallet';
 import matchRoutes from './routes/match';
 import tournamentRoutes from './routes/tournament';
-import { setupGameSocket } from './sockets/gameSocket';
+import { setupGameSocket, startTournamentScheduler } from './sockets/gameSocket';
 
 dotenv.config();
 
@@ -82,6 +82,7 @@ const startServer = async () => {
   
   // Bind Socket connections
   setupGameSocket(io);
+  startTournamentScheduler(io);
 
   server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

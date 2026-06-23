@@ -857,3 +857,194 @@ export const startBotScheduler = (io: Server) => {
     }
   }, 15000); // Check every 15 seconds
 };
+
+export const startTournamentScheduler = (io: Server) => {
+  console.log('Starting Grandmaster league tournament rounds scheduler...');
+  setInterval(async () => {
+    try {
+      // Find active league tournaments
+      const activeTournaments = await Tournament.find({ status: 'ACTIVE', type: 'LEAGUE_5_DAY' });
+      if (activeTournaments.length === 0) return;
+
+      const now = new Date();
+
+      for (const tournament of activeTournaments) {
+        const roundStart = tournament.roundStartTime ? new Date(tournament.roundStartTime).getTime() : 0;
+        const elapsedSeconds = (now.getTime() - roundStart) / 1000;
+
+        if (elapsedSeconds >= tournament.roundDurationSeconds) {
+          console.log(`Tournament ${tournament.name} (${tournament._id}) Round ${tournament.currentRound} time has expired. Advancing round...`);
+
+          const session = isTransactionSupported ? await mongoose.startSession() : null;
+          if (session) {
+            session.startTransaction();
+          }
+
+          try {
+            // 1. Auto-conclude any unfinished matches in the current round
+            const currentRoundBrackets = tournament.brackets.filter(b => b.round === tournament.currentRound);
+            const currentRoundMatchIds = currentRoundBrackets.map(b => b.matchId);
+
+            const unfinishedMatches = await Match.find({
+              _id: { $in: currentRoundMatchIds },
+              status: { $in: ['WAITING', 'RUNNING'] }
+            }).session(session);
+
+            for (const match of unfinishedMatches) {
+              match.status = 'COMPLETED';
+              match.result = 'DRAW'; // default to DRAW for unfinished tournament matches when time runs out
+              await match.save({ session: session || undefined });
+
+              // Update participant scores in the tournament for this draw
+              const pW = tournament.participants.find(p => p.userId.toString() === match.whitePlayerId?.toString());
+              if (pW) pW.score += 0.5;
+              const pB = tournament.participants.find(p => p.userId.toString() === match.blackPlayerId?.toString());
+              if (pB) pB.score += 0.5;
+
+              // Broadcast updates
+              io.to(match._id.toString()).emit('match_state', match);
+              io.to(match._id.toString()).emit('game_ended', { result: 'DRAW' });
+            }
+
+            // Also record winners for bracket slots that completed
+            for (const bracket of currentRoundBrackets) {
+              if (!bracket.winner) {
+                const finishedMatch = await Match.findById(bracket.matchId).session(session);
+                if (finishedMatch && finishedMatch.status === 'COMPLETED' && finishedMatch.winnerId) {
+                  bracket.winner = finishedMatch.winnerId;
+                }
+              }
+            }
+
+            // 2. Advance to the next round or end the tournament
+            if (tournament.currentRound >= tournament.roundCount) {
+              // End the tournament!
+              tournament.status = 'COMPLETED';
+              
+              let maxScore = -1;
+              tournament.participants.forEach(p => {
+                if (p.score > maxScore) maxScore = p.score;
+              });
+
+              const winners = tournament.participants.filter(p => p.score === maxScore && p.status === 'ACTIVE');
+              if (winners.length > 0 && tournament.totalPrize > 0) {
+                const payoutPerWinner = tournament.totalPrize / winners.length;
+                for (const winner of winners) {
+                  await Wallet.findOneAndUpdate(
+                    { userId: winner.userId },
+                    { $inc: { balance: payoutPerWinner } },
+                    { session: session || undefined }
+                  );
+
+                  await new Transaction({
+                    userId: winner.userId,
+                    amount: payoutPerWinner,
+                    type: 'TOURNAMENT_PRIZE',
+                    status: 'SUCCESS',
+                    description: `Prize payout for winning tournament: ${tournament.name}`,
+                    referenceId: tournament._id.toString()
+                  }).save({ session: session || undefined });
+                }
+              }
+              console.log(`Tournament ${tournament.name} concluded. Winners count: ${winners.length}`);
+            } else {
+              // Start next round!
+              tournament.currentRound += 1;
+              tournament.roundStartTime = new Date();
+
+              // Setup pairings for the next round
+              let activeParticipants = tournament.participants.filter(p => p.status === 'ACTIVE');
+
+              // If league tournament and odd number of participants, pair the odd player with a bot
+              if (activeParticipants.length % 2 !== 0) {
+                const bots = await User.find({ isBot: true });
+                if (bots.length > 0) {
+                  const randomBot = bots[Math.floor(Math.random() * bots.length)];
+                  const isBotRegistered = tournament.participants.some(p => p.userId.toString() === randomBot._id.toString());
+                  if (!isBotRegistered) {
+                    const newParticipant = {
+                      userId: randomBot._id,
+                      username: randomBot.username,
+                      score: 0,
+                      status: 'ACTIVE' as const
+                    };
+                    tournament.participants.push(newParticipant);
+                    activeParticipants.push(newParticipant);
+                  } else {
+                    const pIndex = tournament.participants.findIndex(p => p.userId.toString() === randomBot._id.toString());
+                    tournament.participants[pIndex].status = 'ACTIVE';
+                    activeParticipants.push(tournament.participants[pIndex]);
+                  }
+                }
+              }
+
+              // Simple Swiss-style matchmaking (sort by score desc and pair sequentially)
+              activeParticipants.sort((a, b) => b.score - a.score);
+
+              const activeUserIds = activeParticipants.map(p => p.userId);
+              const activeUsers = await User.find({ _id: { $in: activeUserIds } }).select('_id title');
+              const titleMap = new Map<string, string>();
+              activeUsers.forEach(u => {
+                if (u.title) {
+                  titleMap.set(u._id.toString(), u.title);
+                }
+              });
+
+              const matchesToCreate = [];
+              for (let i = 0; i < activeParticipants.length; i += 2) {
+                if (i + 1 < activeParticipants.length) {
+                  const playerA = activeParticipants[i];
+                  const playerB = activeParticipants[i + 1];
+
+                  const newMatch = new Match({
+                    whitePlayerId: playerA.userId,
+                    blackPlayerId: playerB.userId,
+                    whiteUsername: playerA.username,
+                    blackUsername: playerB.username,
+                    whiteTitle: titleMap.get(playerA.userId.toString()),
+                    blackTitle: titleMap.get(playerB.userId.toString()),
+                    entryFee: 0,
+                    prizePool: 0,
+                    timeControl: 600,
+                    status: 'RUNNING'
+                  });
+                  matchesToCreate.push(newMatch);
+                }
+              }
+
+              if (matchesToCreate.length > 0) {
+                const savedMatches = await Match.insertMany(matchesToCreate, session ? { session } : {});
+                savedMatches.forEach(m => {
+                  tournament.brackets.push({
+                    round: tournament.currentRound,
+                    matchId: m._id as mongoose.Types.ObjectId,
+                    playerA: m.whitePlayerId!,
+                    playerB: m.blackPlayerId!,
+                  });
+                });
+              }
+
+              console.log(`Tournament ${tournament.name} round advanced to ${tournament.currentRound}. Matches created: ${matchesToCreate.length}`);
+            }
+
+            await tournament.save({ session: session || undefined });
+
+            if (session) {
+              await session.commitTransaction();
+              session.endSession();
+            }
+
+          } catch (txError) {
+            if (session) {
+              await session.abortTransaction();
+              session.endSession();
+            }
+            console.error(`Error in advancing tournament round:`, txError);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error in tournament scheduler loop:', err);
+    }
+  }, 60000); // Run check every 60 seconds
+};

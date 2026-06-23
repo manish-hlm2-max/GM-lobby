@@ -117,19 +117,25 @@ router.post('/register', authMiddleware, async (req: AuthRequest, res: Response)
 // 3. Admin Create Tournament
 router.post('/admin/create', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { name, entryFee, totalPrize, scheduledStartTime, roundCount } = req.body;
+    const { name, entryFee, totalPrize, scheduledStartTime, roundCount, type, roundDurationSeconds } = req.body;
 
     if (!name || !scheduledStartTime) {
       res.status(400).json({ success: false, error: 'Tournament name and start time are required.' });
       return;
     }
 
+    const tournamentType = type || 'STANDARD';
+    const finalRoundCount = roundCount || (tournamentType === 'LEAGUE_5_DAY' ? 10 : 3);
+    const finalRoundDuration = roundDurationSeconds || (tournamentType === 'LEAGUE_5_DAY' ? 43200 : 0); // Default 12 hours for League
+
     const newTournament = new Tournament({
       name,
       entryFee: entryFee || 0,
       totalPrize: totalPrize || 0,
       scheduledStartTime: new Date(scheduledStartTime),
-      roundCount: roundCount || 3,
+      roundCount: finalRoundCount,
+      type: tournamentType,
+      roundDurationSeconds: finalRoundDuration,
       status: 'UPCOMING',
       participants: [],
       brackets: []
@@ -159,7 +165,31 @@ router.post('/admin/start', authMiddleware, adminMiddleware, async (req: AuthReq
       return;
     }
 
-    const activeParticipants = tournament.participants.filter(p => p.status === 'ACTIVE');
+    let activeParticipants = tournament.participants.filter(p => p.status === 'ACTIVE');
+
+    // If league tournament and odd number of participants, pair the odd player with a bot
+    if (tournament.type === 'LEAGUE_5_DAY' && activeParticipants.length % 2 !== 0) {
+      const bots = await User.find({ isBot: true });
+      if (bots.length > 0) {
+        const randomBot = bots[Math.floor(Math.random() * bots.length)];
+        const isBotRegistered = tournament.participants.some(p => p.userId.toString() === randomBot._id.toString());
+        if (!isBotRegistered) {
+          const newParticipant = {
+            userId: randomBot._id,
+            username: randomBot.username,
+            score: 0,
+            status: 'ACTIVE' as const
+          };
+          tournament.participants.push(newParticipant);
+          activeParticipants.push(newParticipant);
+        } else {
+          const pIndex = tournament.participants.findIndex(p => p.userId.toString() === randomBot._id.toString());
+          tournament.participants[pIndex].status = 'ACTIVE';
+          activeParticipants.push(tournament.participants[pIndex]);
+        }
+      }
+    }
+
     if (activeParticipants.length < 2) {
       res.status(400).json({ success: false, error: 'Need at least 2 participants to start a tournament.' });
       return;
@@ -173,6 +203,7 @@ router.post('/admin/start', authMiddleware, adminMiddleware, async (req: AuthReq
     try {
       tournament.status = 'ACTIVE';
       tournament.currentRound = 1;
+      tournament.roundStartTime = new Date();
 
       // Simple matchmaking: pair players sequentially
       // For Swiss/Arena, we shuffle or sort by score. For Round 1, pair sequentially.
@@ -207,7 +238,7 @@ router.post('/admin/start', authMiddleware, adminMiddleware, async (req: AuthReq
 
           matchesToCreate.push(tournamentMatch);
         } else {
-          // Odd player gets a bye: they advance automatically
+          // Odd player gets a bye: they advance automatically (this is for STANDARD, since LEAGUE pairs with bot)
           const oddPlayer = activeParticipants[i];
           const index = tournament.participants.findIndex(p => p.userId.toString() === oddPlayer.userId.toString());
           if (index !== -1) {
