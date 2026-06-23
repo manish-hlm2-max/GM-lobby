@@ -446,6 +446,9 @@ const concludeMatch = async (
       const newEloW = Math.max(100, Math.round(eloW + kW * (scoreW - expectedW)));
       const newEloB = Math.max(100, Math.round(eloB + kB * (scoreB - expectedB)));
 
+      const changeW = newEloW - eloW;
+      const changeB = newEloB - eloB;
+
       whiteUser.elo = newEloW;
       blackUser.elo = newEloB;
 
@@ -460,8 +463,12 @@ const concludeMatch = async (
         blackUser.draws += 1;
       }
 
+      match.whiteEloChange = changeW;
+      match.blackEloChange = changeB;
+
       await whiteUser.save({ session: session || undefined });
       await blackUser.save({ session: session || undefined });
+      await match.save({ session: session || undefined });
     }
 
     // 3. Tournament updates & progression
@@ -547,6 +554,16 @@ const concludeMatch = async (
           // Sort Swiss-style (by score desc)
           activeParticipants.sort((a, b) => b.score - a.score);
 
+          // Fetch titles for active participants
+          const activeUserIds = activeParticipants.map(p => p.userId);
+          const activeUsers = await User.find({ _id: { $in: activeUserIds } }).select('_id title');
+          const titleMap = new Map<string, string>();
+          activeUsers.forEach(u => {
+            if (u.title) {
+              titleMap.set(u._id.toString(), u.title);
+            }
+          });
+
           const matchesToCreate = [];
           for (let i = 0; i < activeParticipants.length; i += 2) {
             if (i + 1 < activeParticipants.length) {
@@ -558,6 +575,8 @@ const concludeMatch = async (
                 blackPlayerId: playerB.userId,
                 whiteUsername: playerA.username,
                 blackUsername: playerB.username,
+                whiteTitle: titleMap.get(playerA.userId.toString()),
+                blackTitle: titleMap.get(playerB.userId.toString()),
                 entryFee: 0,
                 prizePool: 0,
                 timeControl: 600, // standard 10 mins
@@ -799,9 +818,11 @@ export const startBotScheduler = (io: Server) => {
           if (!freshMatch.whitePlayerId) {
             freshMatch.whitePlayerId = randomBot._id;
             freshMatch.whiteUsername = randomBot.username;
+            freshMatch.whiteTitle = randomBot.title;
           } else {
             freshMatch.blackPlayerId = randomBot._id;
             freshMatch.blackUsername = randomBot.username;
+            freshMatch.blackTitle = randomBot.title;
           }
 
           freshMatch.status = 'RUNNING';

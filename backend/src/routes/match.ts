@@ -79,6 +79,8 @@ router.post('/create', authMiddleware, async (req: AuthRequest, res: Response): 
       blackPlayerId: isWhite ? undefined : userId,
       whiteUsername: isWhite ? hostUser.username : undefined,
       blackUsername: isWhite ? undefined : hostUser.username,
+      whiteTitle: isWhite ? hostUser.title : undefined,
+      blackTitle: isWhite ? undefined : hostUser.title,
       entryFee,
       prizePool: entryFee * 2.0,
       timeControl,
@@ -151,9 +153,11 @@ router.post('/join', authMiddleware, async (req: AuthRequest, res: Response): Pr
     if (!match.whitePlayerId) {
       match.whitePlayerId = new mongoose.Types.ObjectId(userId);
       match.whiteUsername = player.username;
+      match.whiteTitle = player.title;
     } else {
       match.blackPlayerId = new mongoose.Types.ObjectId(userId);
       match.blackUsername = player.username;
+      match.blackTitle = player.title;
     }
 
     match.status = 'RUNNING';
@@ -323,9 +327,11 @@ router.post('/matchmake', authMiddleware, async (req: AuthRequest, res: Response
         if (!existingMatch.whitePlayerId) {
           existingMatch.whitePlayerId = userObjId;
           existingMatch.whiteUsername = player.username;
+          existingMatch.whiteTitle = player.title;
         } else {
           existingMatch.blackPlayerId = userObjId;
           existingMatch.blackUsername = player.username;
+          existingMatch.blackTitle = player.title;
         }
 
         existingMatch.status = 'RUNNING';
@@ -380,6 +386,8 @@ router.post('/matchmake', authMiddleware, async (req: AuthRequest, res: Response
         blackPlayerId: isWhite ? null : userObjId,
         whiteUsername: isWhite ? player.username : null,
         blackUsername: isWhite ? undefined : player.username,
+        whiteTitle: isWhite ? player.title : null,
+        blackTitle: isWhite ? undefined : player.title,
         entryFee: numericEntryFee,
         prizePool: numericEntryFee * 2.0,
         timeControl: numericTimeControl,
@@ -464,9 +472,11 @@ router.post('/force-bot-join', authMiddleware, async (req: AuthRequest, res: Res
       if (!match.whitePlayerId) {
         match.whitePlayerId = bot._id;
         match.whiteUsername = bot.username;
+        match.whiteTitle = bot.title;
       } else {
         match.blackPlayerId = bot._id;
         match.blackUsername = bot.username;
+        match.blackTitle = bot.title;
       }
 
       match.status = 'RUNNING';

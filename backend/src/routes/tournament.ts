@@ -176,6 +176,15 @@ router.post('/admin/start', authMiddleware, adminMiddleware, async (req: AuthReq
 
       // Simple matchmaking: pair players sequentially
       // For Swiss/Arena, we shuffle or sort by score. For Round 1, pair sequentially.
+      const activeUserIds = activeParticipants.map(p => p.userId);
+      const activeUsers = await User.find({ _id: { $in: activeUserIds } }).select('_id title');
+      const titleMap = new Map<string, string>();
+      activeUsers.forEach(u => {
+        if (u.title) {
+          titleMap.set(u._id.toString(), u.title);
+        }
+      });
+
       const matchesToCreate = [];
       for (let i = 0; i < activeParticipants.length; i += 2) {
         if (i + 1 < activeParticipants.length) {
@@ -188,6 +197,8 @@ router.post('/admin/start', authMiddleware, adminMiddleware, async (req: AuthReq
             blackPlayerId: playerB.userId,
             whiteUsername: playerA.username,
             blackUsername: playerB.username,
+            whiteTitle: titleMap.get(playerA.userId.toString()),
+            blackTitle: titleMap.get(playerB.userId.toString()),
             entryFee: 0, // already paid at tournament signup
             prizePool: 0, // paid at tournament end
             timeControl: 600, // 10 minutes default

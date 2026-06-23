@@ -8,6 +8,10 @@ export interface IMatch extends Document {
   blackPlayerId?: Types.ObjectId;
   whiteUsername?: string;
   blackUsername?: string;
+  whiteTitle?: string;
+  blackTitle?: string;
+  whiteEloChange?: number;
+  blackEloChange?: number;
   entryFee: number;
   prizePool: number;
   timeControl: number; // in seconds (e.g. 600 for 10 minutes)
@@ -31,6 +35,10 @@ const MatchSchema = new Schema<IMatch>({
   blackPlayerId: { type: Schema.Types.ObjectId, ref: 'User' },
   whiteUsername: { type: String },
   blackUsername: { type: String },
+  whiteTitle: { type: String },
+  blackTitle: { type: String },
+  whiteEloChange: { type: Number },
+  blackEloChange: { type: Number },
   entryFee: { type: Number, default: 0 },
   prizePool: { type: Number, default: 0 },
   timeControl: { type: Number, required: true }, // e.g. 300, 600

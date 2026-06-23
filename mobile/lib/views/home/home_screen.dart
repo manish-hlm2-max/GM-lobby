@@ -7,6 +7,7 @@ import '../../providers/lobby_provider.dart';
 import '../../providers/game_provider.dart';
 import '../../models/match_model.dart';
 import '../game/game_screen.dart';
+import '../../widgets/title_badge.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -241,15 +242,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               TextSpan(
                                 children: [
                                   const TextSpan(text: 'Hello, '),
-                                  if (authState.user?.title != null && authState.user!.title!.isNotEmpty)
-                                    TextSpan(
-                                      text: '${authState.user!.title} ',
-                                      style: GoogleFonts.outfit(
-                                        color: const Color(0xFFFFD700),
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 20,
-                                      ),
-                                    ),
+                                  buildTitleBadge(authState.user?.title, fontSize: 11, rightMargin: 6),
                                   TextSpan(
                                     text: authState.user?.username ?? 'Player',
                                     style: GoogleFonts.outfit(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),

@@ -6,6 +6,8 @@ class MatchModel {
   final String? blackUsername;
   final String? whiteTitle;
   final String? blackTitle;
+  final int? whiteEloChange;
+  final int? blackEloChange;
   final double entryFee;
   final double prizePool;
   final int timeControl;
@@ -24,6 +26,8 @@ class MatchModel {
     this.blackUsername,
     this.whiteTitle,
     this.blackTitle,
+    this.whiteEloChange,
+    this.blackEloChange,
     required this.entryFee,
     required this.prizePool,
     required this.timeControl,
@@ -50,12 +54,18 @@ class MatchModel {
       blackUsername: json['blackPlayerId'] is Map
           ? json['blackPlayerId']['username'] ?? json['blackUsername']
           : json['blackUsername'],
-      whiteTitle: json['whitePlayerId'] is Map
-          ? (json['whitePlayerId']['title'] != null && json['whitePlayerId']['title'].toString().isNotEmpty ? json['whitePlayerId']['title'].toString() : null)
-          : null,
-      blackTitle: json['blackPlayerId'] is Map
-          ? (json['blackPlayerId']['title'] != null && json['blackPlayerId']['title'].toString().isNotEmpty ? json['blackPlayerId']['title'].toString() : null)
-          : null,
+      whiteTitle: json['whiteTitle'] != null && json['whiteTitle'].toString().isNotEmpty
+          ? json['whiteTitle'].toString()
+          : (json['whitePlayerId'] is Map
+              ? (json['whitePlayerId']['title'] != null && json['whitePlayerId']['title'].toString().isNotEmpty ? json['whitePlayerId']['title'].toString() : null)
+              : null),
+      blackTitle: json['blackTitle'] != null && json['blackTitle'].toString().isNotEmpty
+          ? json['blackTitle'].toString()
+          : (json['blackPlayerId'] is Map
+              ? (json['blackPlayerId']['title'] != null && json['blackPlayerId']['title'].toString().isNotEmpty ? json['blackPlayerId']['title'].toString() : null)
+              : null),
+      whiteEloChange: json['whiteEloChange'] != null ? (json['whiteEloChange'] as num).toInt() : null,
+      blackEloChange: json['blackEloChange'] != null ? (json['blackEloChange'] as num).toInt() : null,
       entryFee: (json['entryFee'] as num?)?.toDouble() ?? 0.0,
       prizePool: (json['prizePool'] as num?)?.toDouble() ?? 0.0,
       timeControl: json['timeControl'] ?? 600,
@@ -76,6 +86,8 @@ class MatchModel {
     String? blackUsername,
     String? whiteTitle,
     String? blackTitle,
+    int? whiteEloChange,
+    int? blackEloChange,
     double? entryFee,
     double? prizePool,
     int? timeControl,
@@ -94,6 +106,8 @@ class MatchModel {
       blackUsername: blackUsername ?? this.blackUsername,
       whiteTitle: whiteTitle ?? this.whiteTitle,
       blackTitle: blackTitle ?? this.blackTitle,
+      whiteEloChange: whiteEloChange ?? this.whiteEloChange,
+      blackEloChange: blackEloChange ?? this.blackEloChange,
       entryFee: entryFee ?? this.entryFee,
       prizePool: prizePool ?? this.prizePool,
       timeControl: timeControl ?? this.timeControl,

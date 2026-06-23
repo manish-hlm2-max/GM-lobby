@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:chess/chess.dart' as ChessDart;
 import '../../models/match_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/title_badge.dart';
 
 class MatchReplayScreen extends ConsumerStatefulWidget {
   final MatchModel match;
@@ -199,15 +200,7 @@ class _MatchReplayScreenState extends ConsumerState<MatchReplayScreen> {
                 Text.rich(
                   TextSpan(
                     children: [
-                      if (opponentTitle != null && opponentTitle.isNotEmpty)
-                        TextSpan(
-                          text: '$opponentTitle ',
-                          style: GoogleFonts.inter(
-                            color: const Color(0xFFFFD700),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
-                        ),
+                      buildTitleBadge(opponentTitle, fontSize: 9, rightMargin: 4),
                       TextSpan(
                         text: opponentName,
                         style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
@@ -348,15 +341,7 @@ class _MatchReplayScreenState extends ConsumerState<MatchReplayScreen> {
                 Text.rich(
                   TextSpan(
                     children: [
-                      if (myTitle != null && myTitle.isNotEmpty)
-                        TextSpan(
-                          text: '$myTitle ',
-                          style: GoogleFonts.inter(
-                            color: const Color(0xFFFFD700),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
-                        ),
+                      buildTitleBadge(myTitle, fontSize: 9, rightMargin: 4),
                       TextSpan(
                         text: '$myName (You)',
                         style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),

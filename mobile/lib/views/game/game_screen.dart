@@ -7,6 +7,7 @@ import 'package:chess/chess.dart' as ChessDart;
 import '../../models/match_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/game_provider.dart';
+import '../../widgets/title_badge.dart';
 
 class GameScreen extends ConsumerStatefulWidget {
   const GameScreen({super.key});
@@ -270,7 +271,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     String statusText;
     Color statusColor;
     String description;
-    String icon;
+    IconData statusIcon;
     List<Color> gradientColors;
     
     if (isDraw) {
@@ -278,31 +279,27 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       statusText = 'Draw Match';
       statusColor = Colors.orangeAccent;
       description = 'Match ended in a draw. Both players fought well!';
-      icon = '🤝';
+      statusIcon = Icons.handshake_rounded;
       gradientColors = [const Color(0xFF2C3E50), const Color(0xFF3498DB)];
     } else if (isWinner) {
       titleText = 'VICTORY';
       statusText = 'You Won!';
       statusColor = const Color(0xFF4ADE80);
       description = 'Congratulations on your spectacular win!';
-      icon = '🏆';
+      statusIcon = Icons.emoji_events_rounded;
       gradientColors = [const Color(0xFF134E5E), const Color(0xFF71B280)];
     } else {
       titleText = 'DEFEAT';
       statusText = 'You Lost';
       statusColor = Colors.redAccent;
       description = 'Better luck next time! Keep practicing.';
-      icon = '😞';
+      statusIcon = Icons.trending_down_rounded;
       gradientColors = [const Color(0xFF430000), const Color(0xFF9E1010)];
     }
 
     final winnerName = match.winnerId == match.whitePlayerId
         ? (match.whiteUsername ?? 'White Player')
         : (match.blackUsername ?? 'Black Player');
-        
-    final loserName = match.winnerId == match.whitePlayerId
-        ? (match.blackUsername ?? 'Black Player')
-        : (match.whiteUsername ?? 'White Player');
 
     showGeneralDialog(
       context: context,
@@ -367,9 +364,10 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                         ],
                       ),
                       child: Center(
-                        child: Text(
-                          icon,
-                          style: const TextStyle(fontSize: 40),
+                        child: Icon(
+                          statusIcon,
+                          size: 40,
+                          color: Colors.white,
                         ),
                       ),
                     ),
@@ -393,6 +391,52 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                    // Elo change badge
+                    () {
+                      final isWhite = match.whitePlayerId == currentUserId;
+                      final eloChange = isWhite ? match.whiteEloChange : match.blackEloChange;
+                      if (eloChange == null) return const SizedBox.shrink();
+
+                      final isPositive = eloChange > 0;
+                      final isNegative = eloChange < 0;
+                      final color = isPositive
+                          ? const Color(0xFF4ADE80)
+                          : (isNegative ? Colors.redAccent : Colors.white60);
+                      final sign = isPositive ? '+' : '';
+
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: color.withOpacity(0.15), width: 1),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isPositive
+                                    ? Icons.trending_up_rounded
+                                    : (isNegative ? Icons.trending_down_rounded : Icons.trending_flat_rounded),
+                                color: color,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Rating: $sign$eloChange',
+                                style: GoogleFonts.inter(
+                                  color: color,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }(),
                     const SizedBox(height: 16),
                     // Player details card
                     Container(
@@ -404,7 +448,89 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                       ),
                       child: Column(
                         children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'White Player',
+                                style: GoogleFonts.inter(color: Colors.white54, fontSize: 13),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      buildTitleBadge(match.whiteTitle, fontSize: 9, rightMargin: 4),
+                                      TextSpan(
+                                        text: match.whiteUsername ?? 'White',
+                                        style: GoogleFonts.inter(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      if (match.whiteEloChange != null)
+                                        TextSpan(
+                                          text: ' (${match.whiteEloChange! > 0 ? '+' : ''}${match.whiteEloChange})',
+                                          style: GoogleFonts.inter(
+                                            color: match.whiteEloChange! > 0
+                                                ? const Color(0xFF4ADE80)
+                                                : (match.whiteEloChange! < 0 ? Colors.redAccent : Colors.white60),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  textAlign: TextAlign.end,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Divider(color: Colors.white10, height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Black Player',
+                                style: GoogleFonts.inter(color: Colors.white54, fontSize: 13),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      buildTitleBadge(match.blackTitle, fontSize: 9, rightMargin: 4),
+                                      TextSpan(
+                                        text: match.blackUsername ?? 'Black',
+                                        style: GoogleFonts.inter(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      if (match.blackEloChange != null)
+                                        TextSpan(
+                                          text: ' (${match.blackEloChange! > 0 ? '+' : ''}${match.blackEloChange})',
+                                          style: GoogleFonts.inter(
+                                            color: match.blackEloChange! > 0
+                                                ? const Color(0xFF4ADE80)
+                                                : (match.blackEloChange! < 0 ? Colors.redAccent : Colors.white60),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  textAlign: TextAlign.end,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                           if (!isDraw) ...[
+                            const Divider(color: Colors.white10, height: 16),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -422,104 +548,6 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                                       fontWeight: FontWeight.bold,
                                       fontSize: 14,
                                     ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const Divider(color: Colors.white10, height: 16),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'Runner-up',
-                                  style: GoogleFonts.inter(color: Colors.white54, fontSize: 13),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    loserName,
-                                    textAlign: TextAlign.end,
-                                    style: GoogleFonts.inter(
-                                      color: Colors.white70,
-                                      fontSize: 14,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ] else ...[
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'White Player',
-                                  style: GoogleFonts.inter(color: Colors.white54, fontSize: 13),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text.rich(
-                                    TextSpan(
-                                      children: [
-                                        if (match.whiteTitle != null && match.whiteTitle!.isNotEmpty)
-                                          TextSpan(
-                                            text: '${match.whiteTitle} ',
-                                            style: GoogleFonts.inter(
-                                              color: const Color(0xFFFFD700),
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                        TextSpan(
-                                          text: match.whiteUsername ?? 'White',
-                                          style: GoogleFonts.inter(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    textAlign: TextAlign.end,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const Divider(color: Colors.white10, height: 16),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'Black Player',
-                                  style: GoogleFonts.inter(color: Colors.white54, fontSize: 13),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text.rich(
-                                    TextSpan(
-                                      children: [
-                                        if (match.blackTitle != null && match.blackTitle!.isNotEmpty)
-                                          TextSpan(
-                                            text: '${match.blackTitle} ',
-                                            style: GoogleFonts.inter(
-                                              color: const Color(0xFFFFD700),
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                        TextSpan(
-                                          text: match.blackUsername ?? 'Black',
-                                          style: GoogleFonts.inter(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    textAlign: TextAlign.end,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
@@ -628,6 +656,16 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
     final isWhitePlayer = match.whitePlayerId == authState.user?.id;
     final chess = ChessDart.Chess.fromFEN(match.boardFen);
+
+    String? lastMoveFrom;
+    String? lastMoveTo;
+    if (match.moveHistory.isNotEmpty) {
+      final lastMove = match.moveHistory.last;
+      if (lastMove is Map) {
+        lastMoveFrom = lastMove['from']?.toString();
+        lastMoveTo = lastMove['to']?.toString();
+      }
+    }
 
     if (_lastMoveCount != match.moveHistory.length) {
       _lastMoveCount = match.moveHistory.length;
@@ -752,15 +790,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                         Text.rich(
                           TextSpan(
                             children: [
-                              if (opponentTitle != null && opponentTitle.isNotEmpty)
-                                TextSpan(
-                                  text: '$opponentTitle ',
-                                  style: GoogleFonts.inter(
-                                    color: const Color(0xFFFFD700),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
-                                ),
+                              buildTitleBadge(opponentTitle, fontSize: 9, rightMargin: 4),
                               TextSpan(
                                 text: opponentName,
                                 style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
@@ -846,6 +876,12 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                       final isLegalDest = _legalMoves.contains(square);
 
                       Color tileColor = squareColor;
+                      if (square == lastMoveFrom || square == lastMoveTo) {
+                        tileColor = isLightSquare
+                            ? const Color(0xFFF7F785) // Chess.com style light yellow
+                            : const Color(0xFFBACA44); // Chess.com style dark yellow
+                      }
+
                       if (isSelected) {
                         tileColor = const Color(0xFFF7F769);
                       } else if (isLegalDest && piece != null) {
@@ -985,15 +1021,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                         Text.rich(
                           TextSpan(
                             children: [
-                              if (myTitle != null && myTitle.isNotEmpty)
-                                TextSpan(
-                                  text: '$myTitle ',
-                                  style: GoogleFonts.inter(
-                                    color: const Color(0xFFFFD700),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
-                                ),
+                              buildTitleBadge(myTitle, fontSize: 9, rightMargin: 4),
                               TextSpan(
                                 text: '$myName (You)',
                                 style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),

@@ -5,6 +5,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/title_badge.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -143,15 +144,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     Text.rich(
                       TextSpan(
                         children: [
-                          if (user?.title != null && user!.title!.isNotEmpty)
-                            TextSpan(
-                              text: '${user.title} ',
-                              style: GoogleFonts.outfit(
-                                color: const Color(0xFFFFD700),
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                           buildTitleBadge(user?.title, fontSize: 13, rightMargin: 6),
                           TextSpan(
                             text: user?.username ?? 'Grandmaster',
                             style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
@@ -396,15 +389,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               Text.rich(
                                 TextSpan(
                                   children: [
-                                    if (sUser.title != null && sUser.title!.isNotEmpty)
-                                      TextSpan(
-                                        text: '${sUser.title} ',
-                                        style: GoogleFonts.inter(
-                                          color: const Color(0xFFFFD700),
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                        ),
-                                      ),
+                                     buildTitleBadge(sUser.title, fontSize: 9, rightMargin: 4),
                                     TextSpan(
                                       text: sUser.username,
                                       style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
@@ -497,15 +482,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             Text.rich(
                               TextSpan(
                                 children: [
-                                  if (friend.title != null && friend.title!.isNotEmpty)
-                                    TextSpan(
-                                      text: '${friend.title} ',
-                                      style: GoogleFonts.inter(
-                                        color: const Color(0xFFFFD700),
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                      ),
-                                    ),
+                                  buildTitleBadge(friend.title, fontSize: 9, rightMargin: 4),
                                   TextSpan(
                                     text: friend.username,
                                     style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
