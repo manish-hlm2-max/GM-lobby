@@ -1,5 +1,5 @@
 class ApiConfig {
-  static const String host = 'chess-game-1-epcc.onrender.com'; // Target live Render server
+  static const String host = 'chess-betting-backend.onrender.com'; // Target live Render server
   static const String baseUrl = 'https://$host';
   static const String wsUrl = 'wss://$host';
 
