@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../models/tournament_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/lobby_provider.dart';
+import 'tournament_details_screen.dart';
 
 class TournamentScreen extends ConsumerStatefulWidget {
   const TournamentScreen({super.key});
@@ -155,56 +156,75 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
                                     'Participants: ${tourn.participants.length}',
                                     style: GoogleFonts.inter(color: Colors.white38, fontSize: 13),
                                   ),
-                                  ElevatedButton(
-                                    onPressed: isRegistered || tourn.status != 'UPCOMING'
-                                        ? null
-                                        : () async {
-                                            final success = await ref
-                                                .read(lobbyProvider.notifier)
-                                                .registerTournament(tourn.id);
-                                            if (success && mounted) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                const SnackBar(
-                                                  content: Text('Registered for tournament!'),
-                                                  backgroundColor: Colors.teal,
-                                                ),
-                                              );
-                                              // Refresh wallet balance
-                                              ref.read(authProvider.notifier).checkAuth();
-                                            }
-                                          },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: isRegistered ? Colors.grey[800] : Colors.teal[400],
-                                      disabledBackgroundColor: Colors.teal[800]?.withOpacity(0.3),
-                                    ),
-                                    child: isRegistered
-                                        ? Row(
-                                            children: const [
-                                              Icon(Icons.check_rounded, size: 16, color: Colors.white70),
-                                              SizedBox(width: 4),
-                                              Text('Registered', style: TextStyle(color: Colors.white70)),
-                                            ],
-                                          )
-                                        : Text(
-                                            'Join (₹${tourn.entryFee.toStringAsFixed(2)})',
-                                            style: const TextStyle(color: Colors.white),
-                                          ),
-                                  ),
+                                  if (tourn.status == 'UPCOMING') ...[
+                                    ElevatedButton(
+                                      onPressed: isRegistered
+                                          ? null
+                                          : () async {
+                                              final success = await ref
+                                                  .read(lobbyProvider.notifier)
+                                                  .registerTournament(tourn.id);
+                                              if (success && mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text('Registered for tournament!'),
+                                                    backgroundColor: Colors.teal,
+                                                  ),
+                                                );
+                                                ref.read(authProvider.notifier).checkAuth();
+                                              }
+                                            },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: isRegistered ? Colors.grey[800] : Colors.teal[400],
+                                        disabledBackgroundColor: Colors.teal[800]?.withOpacity(0.3),
+                                      ),
+                                      child: isRegistered
+                                          ? Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: const [
+                                                Icon(Icons.check_rounded, size: 16, color: Colors.white70),
+                                                SizedBox(width: 4),
+                                                Text('Registered', style: TextStyle(color: Colors.white70)),
+                                              ],
+                                            )
+                                          : Text(
+                                              'Join (₹${tourn.entryFee.toStringAsFixed(2)})',
+                                              style: const TextStyle(color: Colors.white),
+                                            ),
+                                    )
+                                  ] else if (tourn.status == 'ACTIVE' || tourn.status == 'COMPLETED') ...[
+                                    if (isRegistered)
+                                      ElevatedButton(
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => TournamentDetailsScreen(tournamentId: tourn.id),
+                                            ),
+                                          );
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: tourn.status == 'ACTIVE' ? Colors.teal[400] : Colors.blueAccent,
+                                        ),
+                                        child: Text(
+                                          tourn.status == 'ACTIVE' ? 'Play' : 'Results',
+                                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                        ),
+                                      )
+                                    else
+                                      ElevatedButton(
+                                        onPressed: null,
+                                        style: ElevatedButton.styleFrom(
+                                          disabledBackgroundColor: Colors.white.withOpacity(0.04),
+                                        ),
+                                        child: Text(
+                                          tourn.status == 'ACTIVE' ? 'Started' : 'Ended',
+                                          style: const TextStyle(color: Colors.white24),
+                                        ),
+                                      )
+                                  ],
                                 ],
                               ),
-                              if (tourn.type == 'LEAGUE_5_DAY' && (tourn.status == 'ACTIVE' || tourn.status == 'COMPLETED')) ...[
-                                const Divider(color: Colors.white10, height: 24),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    TextButton.icon(
-                                      onPressed: () => _showPointsTable(context, tourn),
-                                      icon: const Icon(Icons.leaderboard_rounded, size: 18, color: Colors.teal),
-                                      label: const Text('View Points Table / Live Leaderboard', style: TextStyle(color: Colors.teal)),
-                                    ),
-                                  ],
-                                ),
-                              ],
                             ],
                           ),
                         );
