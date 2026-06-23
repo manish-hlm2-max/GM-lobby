@@ -50,18 +50,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Text.rich(
-                      TextSpan(
-                        children: [
-                           buildTitleBadge(user?.title, fontSize: 13, rightMargin: 6),
-                          TextSpan(
-                            text: user?.username ?? 'Grandmaster',
-                            style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
+                    Text(
+                      user?.username ?? 'Player',
+                      style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
                       textAlign: TextAlign.center,
                     ),
+                    if (user?.title != null && user!.title!.trim().isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      buildFullTitleBadge(user.title, fontSize: 12),
+                    ],
                     Text(
                       user?.email ?? 'player@chess.com',
                       style: GoogleFonts.inter(color: Colors.white38, fontSize: 13),

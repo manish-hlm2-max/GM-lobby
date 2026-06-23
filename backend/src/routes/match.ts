@@ -81,6 +81,8 @@ router.post('/create', authMiddleware, async (req: AuthRequest, res: Response): 
       blackUsername: isWhite ? undefined : hostUser.username,
       whiteTitle: isWhite ? hostUser.title : undefined,
       blackTitle: isWhite ? undefined : hostUser.title,
+      whiteElo: isWhite ? hostUser.elo : undefined,
+      blackElo: isWhite ? undefined : hostUser.elo,
       entryFee,
       prizePool: entryFee * 2.0,
       timeControl,
@@ -154,10 +156,12 @@ router.post('/join', authMiddleware, async (req: AuthRequest, res: Response): Pr
       match.whitePlayerId = new mongoose.Types.ObjectId(userId);
       match.whiteUsername = player.username;
       match.whiteTitle = player.title;
+      match.whiteElo = player.elo;
     } else {
       match.blackPlayerId = new mongoose.Types.ObjectId(userId);
       match.blackUsername = player.username;
       match.blackTitle = player.title;
+      match.blackElo = player.elo;
     }
 
     match.status = 'RUNNING';
@@ -328,10 +332,12 @@ router.post('/matchmake', authMiddleware, async (req: AuthRequest, res: Response
           existingMatch.whitePlayerId = userObjId;
           existingMatch.whiteUsername = player.username;
           existingMatch.whiteTitle = player.title;
+          existingMatch.whiteElo = player.elo;
         } else {
           existingMatch.blackPlayerId = userObjId;
           existingMatch.blackUsername = player.username;
           existingMatch.blackTitle = player.title;
+          existingMatch.blackElo = player.elo;
         }
 
         existingMatch.status = 'RUNNING';
@@ -388,6 +394,8 @@ router.post('/matchmake', authMiddleware, async (req: AuthRequest, res: Response
         blackUsername: isWhite ? undefined : player.username,
         whiteTitle: isWhite ? player.title : null,
         blackTitle: isWhite ? undefined : player.title,
+        whiteElo: isWhite ? player.elo : undefined,
+        blackElo: isWhite ? undefined : player.elo,
         entryFee: numericEntryFee,
         prizePool: numericEntryFee * 2.0,
         timeControl: numericTimeControl,
@@ -473,10 +481,12 @@ router.post('/force-bot-join', authMiddleware, async (req: AuthRequest, res: Res
         match.whitePlayerId = bot._id;
         match.whiteUsername = bot.username;
         match.whiteTitle = bot.title;
+        match.whiteElo = bot.elo;
       } else {
         match.blackPlayerId = bot._id;
         match.blackUsername = bot.username;
         match.blackTitle = bot.title;
+        match.blackElo = bot.elo;
       }
 
       match.status = 'RUNNING';

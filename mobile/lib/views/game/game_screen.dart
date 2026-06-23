@@ -713,6 +713,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     final myTitle = isWhitePlayer ? match.whiteTitle : match.blackTitle;
     final myColor = isWhitePlayer ? 'White' : 'Black';
     final opponentColor = isWhitePlayer ? 'Black' : 'White';
+    final opponentElo = isWhitePlayer ? match.blackElo : match.whiteElo;
+    final myElo = isWhitePlayer ? match.whiteElo : match.blackElo;
 
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
@@ -788,7 +790,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          opponentName,
+                          '$opponentName  (${opponentElo ?? 1200})',
                           style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
                         ),
                         buildFullTitleBadge(opponentTitle),
@@ -1013,7 +1015,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '$myName (You)',
+                          '$myName (You)  (${myElo ?? 1200})',
                           style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
                         ),
                         buildFullTitleBadge(myTitle),

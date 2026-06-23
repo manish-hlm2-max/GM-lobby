@@ -8,6 +8,8 @@ class MatchModel {
   final String? blackTitle;
   final int? whiteEloChange;
   final int? blackEloChange;
+  final int? whiteElo;
+  final int? blackElo;
   final double entryFee;
   final double prizePool;
   final int timeControl;
@@ -28,6 +30,8 @@ class MatchModel {
     this.blackTitle,
     this.whiteEloChange,
     this.blackEloChange,
+    this.whiteElo,
+    this.blackElo,
     required this.entryFee,
     required this.prizePool,
     required this.timeControl,
@@ -66,6 +70,16 @@ class MatchModel {
               : null),
       whiteEloChange: json['whiteEloChange'] != null ? (json['whiteEloChange'] as num).toInt() : null,
       blackEloChange: json['blackEloChange'] != null ? (json['blackEloChange'] as num).toInt() : null,
+      whiteElo: json['whiteElo'] != null
+          ? (json['whiteElo'] as num).toInt()
+          : (json['whitePlayerId'] is Map && json['whitePlayerId']['elo'] != null
+              ? (json['whitePlayerId']['elo'] as num).toInt()
+              : null),
+      blackElo: json['blackElo'] != null
+          ? (json['blackElo'] as num).toInt()
+          : (json['blackPlayerId'] is Map && json['blackPlayerId']['elo'] != null
+              ? (json['blackPlayerId']['elo'] as num).toInt()
+              : null),
       entryFee: (json['entryFee'] as num?)?.toDouble() ?? 0.0,
       prizePool: (json['prizePool'] as num?)?.toDouble() ?? 0.0,
       timeControl: json['timeControl'] ?? 600,
@@ -88,6 +102,8 @@ class MatchModel {
     String? blackTitle,
     int? whiteEloChange,
     int? blackEloChange,
+    int? whiteElo,
+    int? blackElo,
     double? entryFee,
     double? prizePool,
     int? timeControl,
@@ -108,6 +124,8 @@ class MatchModel {
       blackTitle: blackTitle ?? this.blackTitle,
       whiteEloChange: whiteEloChange ?? this.whiteEloChange,
       blackEloChange: blackEloChange ?? this.blackEloChange,
+      whiteElo: whiteElo ?? this.whiteElo,
+      blackElo: blackElo ?? this.blackElo,
       entryFee: entryFee ?? this.entryFee,
       prizePool: prizePool ?? this.prizePool,
       timeControl: timeControl ?? this.timeControl,

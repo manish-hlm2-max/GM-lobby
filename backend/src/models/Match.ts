@@ -12,6 +12,8 @@ export interface IMatch extends Document {
   blackTitle?: string;
   whiteEloChange?: number;
   blackEloChange?: number;
+  whiteElo?: number;
+  blackElo?: number;
   entryFee: number;
   prizePool: number;
   timeControl: number; // in seconds (e.g. 600 for 10 minutes)
@@ -39,6 +41,8 @@ const MatchSchema = new Schema<IMatch>({
   blackTitle: { type: String },
   whiteEloChange: { type: Number },
   blackEloChange: { type: Number },
+  whiteElo: { type: Number },
+  blackElo: { type: Number },
   entryFee: { type: Number, default: 0 },
   prizePool: { type: Number, default: 0 },
   timeControl: { type: Number, required: true }, // e.g. 300, 600
