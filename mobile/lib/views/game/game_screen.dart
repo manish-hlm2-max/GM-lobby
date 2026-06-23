@@ -1064,29 +1064,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
             ),
           ),
 
-          // Game result banner
-          if (match.status == 'COMPLETED')
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              color: match.winnerId == authState.user?.id
-                  ? const Color(0xFF4ADE80).withOpacity(0.12)
-                  : Colors.redAccent.withOpacity(0.12),
-              width: double.infinity,
-              child: Text(
-                match.result == 'DRAW'
-                    ? '🤝 Match ended in a Draw. Entry fees refunded.'
-                    : match.winnerId == authState.user?.id
-                        ? '🏆 Congratulations! You won ₹${match.prizePool.toStringAsFixed(0)}!'
-                        : '😞 Game Over. Opponent won.',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  color: match.winnerId == authState.user?.id ? const Color(0xFF4ADE80) : Colors.redAccent[200],
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                ),
-              ),
-            ),
         ],
+      ),
       ),
     );
   }
