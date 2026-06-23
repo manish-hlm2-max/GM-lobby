@@ -787,17 +787,11 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text.rich(
-                          TextSpan(
-                            children: [
-                              buildTitleBadge(opponentTitle, fontSize: 9, rightMargin: 4),
-                              TextSpan(
-                                text: opponentName,
-                                style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                              ),
-                            ],
-                          ),
+                        Text(
+                          opponentName,
+                          style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
                         ),
+                        buildFullTitleBadge(opponentTitle),
                         Text(
                           opponentColor,
                           style: GoogleFonts.inter(color: Colors.white38, fontSize: 11),
@@ -1018,17 +1012,11 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text.rich(
-                          TextSpan(
-                            children: [
-                              buildTitleBadge(myTitle, fontSize: 9, rightMargin: 4),
-                              TextSpan(
-                                text: '$myName (You)',
-                                style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                              ),
-                            ],
-                          ),
+                        Text(
+                          '$myName (You)',
+                          style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
                         ),
+                        buildFullTitleBadge(myTitle),
                         Text(
                           myColor,
                           style: GoogleFonts.inter(color: Colors.white38, fontSize: 11),

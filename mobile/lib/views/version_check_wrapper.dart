@@ -41,54 +41,65 @@ class _VersionCheckWrapperState extends ConsumerState<VersionCheckWrapper> {
       _errorMessage = null;
     });
 
-    try {
-      // 1. Get local app version details
-      final packageInfo = await PackageInfo.fromPlatform();
-      final localVersionCode = int.tryParse(packageInfo.buildNumber) ?? 0;
-      final localVersionName = packageInfo.version;
+    final packageInfo = await PackageInfo.fromPlatform();
+    final localVersionCode = int.tryParse(packageInfo.buildNumber) ?? 0;
+    final localVersionName = packageInfo.version;
+    debugPrint('Local Version: $localVersionName+$localVersionCode');
 
-      debugPrint('Local Version: $localVersionName+$localVersionCode');
+    int maxRetries = 4;
+    int retryDelaySeconds = 3;
 
-      // 2. Fetch latest version from backend
-      final response = await http
-          .get(Uri.parse(ApiConfig.appVersion))
-          .timeout(const Duration(seconds: 10));
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        debugPrint('Checking for update: Attempt $attempt of $maxRetries');
+        final response = await http
+            .get(Uri.parse(ApiConfig.appVersion))
+            .timeout(const Duration(seconds: 10));
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true) {
-          final serverVersionCode = data['versionCode'] as int;
-          final serverVersionName = data['versionName'] as String;
-          final apkUrl = data['apkUrl'] as String;
-          final isMandatory = data['isMandatory'] ?? true;
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (data['success'] == true) {
+            final serverVersionCode = data['versionCode'] as int;
+            final serverVersionName = data['versionName'] as String;
+            final apkUrl = data['apkUrl'] as String;
+            final isMandatory = data['isMandatory'] ?? true;
 
-          debugPrint('Server Version: $serverVersionName+$serverVersionCode');
+            debugPrint('Server Version: $serverVersionName+$serverVersionCode');
 
-          if (serverVersionCode > localVersionCode) {
+            if (serverVersionCode > localVersionCode) {
+              setState(() {
+                _needsUpdate = true;
+                _apkUrl = apkUrl;
+                _isMandatory = isMandatory;
+                _isLoading = false;
+              });
+              return;
+            }
+
+            // No update needed or success condition met
             setState(() {
-              _needsUpdate = true;
-              _apkUrl = apkUrl;
-              _isMandatory = isMandatory;
+              _needsUpdate = false;
               _isLoading = false;
             });
             return;
           }
         }
+      } catch (e) {
+        debugPrint('Version check attempt $attempt error: $e');
+        if (attempt < maxRetries) {
+          debugPrint('Waiting $retryDelaySeconds seconds before retrying...');
+          await Future.delayed(Duration(seconds: retryDelaySeconds));
+          retryDelaySeconds += 3;
+          continue;
+        }
       }
-      
-      // No update needed or success condition met
-      setState(() {
-        _needsUpdate = false;
-        _isLoading = false;
-      });
-    } catch (e) {
-      debugPrint('Version check error: $e');
-      // For network errors, we can allow the user to retry.
-      setState(() {
-        _errorMessage = 'Unable to check for updates. Please verify your connection.';
-        _isLoading = false;
-      });
     }
+
+    // All retries failed
+    setState(() {
+      _errorMessage = 'Unable to check for updates. Please verify your connection.';
+      _isLoading = false;
+    });
   }
 
   void _startUpdate() {
@@ -219,7 +230,10 @@ class _VersionCheckWrapperState extends ConsumerState<VersionCheckWrapper> {
                   ),
                   child: Text(
                     'Retry Connection',
-                    style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ],
