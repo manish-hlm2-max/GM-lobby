@@ -85,6 +85,12 @@ class SocketService {
     });
   }
 
+  void onWalletUpdated(Function(Map<String, dynamic>) callback) {
+    _socket?.on('wallet_updated', (data) {
+      callback(Map<String, dynamic>.from(data));
+    });
+  }
+
   void off(String event) {
     _socket?.off(event);
   }

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../models/wallet_model.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/wallet_provider.dart';
+import '../../services/socket_service.dart';
 import 'home_screen.dart';
 import '../wallet/wallet_screen.dart';
 import '../tournament/tournament_screen.dart';
@@ -15,6 +19,7 @@ class LobbyShell extends ConsumerStatefulWidget {
 
 class _LobbyShellState extends ConsumerState<LobbyShell> {
   int _currentIndex = 0;
+  final SocketService _socketService = SocketService();
 
   final List<Widget> _pages = [
     const HomeScreen(),
@@ -23,6 +28,42 @@ class _LobbyShellState extends ConsumerState<LobbyShell> {
     const ResultsScreen(),
     const ProfileScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _connectSocket();
+  }
+
+  void _connectSocket() {
+    final userId = ref.read(authProvider).user?.id;
+    if (userId == null || userId.isEmpty) return;
+
+    _socketService.connect(userId, onConnect: () {
+      print('Lobby socket connected for wallet updates');
+    });
+
+    // Listen for real-time wallet updates from admin actions
+    _socketService.onWalletUpdated((data) {
+      final balance = (data['balance'] as num?)?.toDouble() ?? 0.0;
+      final lockedBalance = (data['lockedBalance'] as num?)?.toDouble() ?? 0.0;
+
+      // Update the wallet balance in auth provider instantly
+      ref.read(authProvider.notifier).updateWallet(
+        WalletModel(balance: balance, lockedBalance: lockedBalance),
+      );
+
+      // Reload transaction history so the wallet screen reflects changes
+      ref.read(walletProvider.notifier).loadHistory();
+    });
+  }
+
+  @override
+  void dispose() {
+    _socketService.off('wallet_updated');
+    _socketService.disconnect();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

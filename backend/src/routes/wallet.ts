@@ -8,8 +8,24 @@ import { User } from '../models/User';
 import { Settings } from '../models/Settings';
 import { authMiddleware, adminMiddleware, AuthRequest } from '../middleware/authMiddleware';
 import { isTransactionSupported } from '../config/db';
+import { getIoInstance } from '../sockets/gameSocket';
 
 const router = Router();
+
+// Helper: emit wallet update to a specific user via their personal socket room
+const emitWalletUpdate = async (userId: string) => {
+  const io = getIoInstance();
+  if (!io) return;
+  try {
+    const wallet = await Wallet.findOne({ userId });
+    io.to(`user:${userId}`).emit('wallet_updated', {
+      balance: wallet ? wallet.balance : 0,
+      lockedBalance: wallet ? wallet.lockedBalance : 0,
+    });
+  } catch (err) {
+    console.error('Error emitting wallet update:', err);
+  }
+};
 
 // 1. Simulate Deposit / Request Manual Deposit
 router.post('/deposit', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
@@ -236,6 +252,9 @@ router.post('/admin/withdrawal/:action', authMiddleware, adminMiddleware, async 
         session.endSession();
       }
 
+      // Emit real-time wallet update to the affected user
+      emitWalletUpdate(transaction.userId.toString());
+
       res.status(200).json({
         success: true,
         transaction,
@@ -299,6 +318,9 @@ router.post('/admin/deposit/:action', authMiddleware, adminMiddleware, async (re
         await session.commitTransaction();
         session.endSession();
       }
+
+      // Emit real-time wallet update to the affected user
+      emitWalletUpdate(transaction.userId.toString());
 
       res.status(200).json({
         success: true,
@@ -374,6 +396,9 @@ router.post('/admin/override', authMiddleware, adminMiddleware, async (req: Auth
         await session.commitTransaction();
         session.endSession();
       }
+
+      // Emit real-time wallet update to the affected user
+      emitWalletUpdate(targetUserId);
 
       res.status(200).json({
         success: true,

@@ -109,44 +109,6 @@ class AuthService {
     }
   }
 
-  Future<Map<String, dynamic>> loginWithGoogle(String email) async {
-    try {
-      final response = await http.post(
-        Uri.parse(ApiConfig.googleLogin),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': email,
-        }),
-      ).timeout(const Duration(seconds: 10));
-
-      final data = jsonDecode(response.body);
-      if ((response.statusCode == 200 || response.statusCode == 201) && data['success'] == true) {
-        final token = data['token'];
-        await saveToken(token);
-        return {
-          'success': true,
-          'user': UserModel.fromJson(data['user']),
-          'token': token,
-        };
-      }
-      return {
-        'success': false,
-        'error': data['error'] ?? 'Google login failed.',
-      };
-    } catch (e) {
-      String errMsg = e.toString();
-      if (errMsg.contains('TimeoutException')) {
-        errMsg = 'Connection timed out. The server is not responding.';
-      } else if (errMsg.contains('SocketException') || errMsg.contains('HandshakeException')) {
-        errMsg = 'Cannot reach server. Please check your internet connection.';
-      }
-      return {
-        'success': false,
-        'error': errMsg,
-      };
-    }
-  }
-
   Future<Map<String, dynamic>> register({
     required String email,
     required String username,

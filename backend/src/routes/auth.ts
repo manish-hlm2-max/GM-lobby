@@ -181,7 +181,7 @@ router.post('/login', async (req, res: Response): Promise<void> => {
 // Google / Gmail Auth (Login or Signup)
 router.post('/google', async (req, res: Response): Promise<void> => {
   try {
-    const { email } = req.body;
+    const { email, displayName } = req.body;
 
     if (!email) {
       res.status(400).json({ success: false, error: 'Email is required.' });
@@ -214,13 +214,13 @@ router.post('/google', async (req, res: Response): Promise<void> => {
 
       const emailLower = email.toLowerCase().trim();
       const isTestingAdmin = ['painl@gmail.com', 'player2077@gmail.com'].includes(emailLower);
-      // Create new user
+      // Create new user - use displayName from Google if available
       user = new User({
         email: email.trim(),
         username: username,
         passwordHash: passwordHash,
         phoneNumber: '',
-        fullName: email.split('@')[0],
+        fullName: displayName ? displayName.trim() : email.split('@')[0],
         elo: 1200,
         role: isTestingAdmin ? 'SUPER_ADMIN' : 'USER',
       });

@@ -95,6 +95,10 @@ export const setupGameSocket = (io: Server) => {
       activeConnections[userId] = [];
     }
     activeConnections[userId].push(socket.id);
+
+    // Join a personal room for targeted events (wallet updates, notifications, etc.)
+    socket.join(`user:${userId}`);
+
     console.log(`User connected: ${userId} (Socket: ${socket.id}). Active users: ${Object.keys(activeConnections).length}`);
 
     // Join Match Room
