@@ -26,7 +26,7 @@ InlineSpan buildTitleBadge(String? title, {double fontSize = 10, double rightMar
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 1.5,
             offset: const Offset(0, 1),
           ),
@@ -82,7 +82,7 @@ Widget buildFullTitleBadge(String? title, {double fontSize = 9}) {
       ),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.15),
+          color: Colors.black.withValues(alpha: 0.15),
           blurRadius: 1.5,
           offset: const Offset(0, 1),
         ),

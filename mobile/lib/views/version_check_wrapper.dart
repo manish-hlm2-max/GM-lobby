@@ -19,8 +19,7 @@ class VersionCheckWrapper extends ConsumerStatefulWidget {
 class _VersionCheckWrapperState extends ConsumerState<VersionCheckWrapper> {
   bool _isLoading = true;
   bool _needsUpdate = false;
-  String? _apkUrl;
-  bool _isMandatory = true;
+    String? _apkUrl;
   String? _errorMessage;
 
   // Download state
@@ -70,7 +69,7 @@ class _VersionCheckWrapperState extends ConsumerState<VersionCheckWrapper> {
               setState(() {
                 _needsUpdate = true;
                 _apkUrl = apkUrl;
-                _isMandatory = isMandatory;
+
                 _isLoading = false;
               });
               return;

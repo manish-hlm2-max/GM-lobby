@@ -130,14 +130,14 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            Colors.teal.withOpacity(0.15),
-                            Colors.teal.withOpacity(0.03),
+                            Colors.teal.withValues(alpha: 0.15),
+                            Colors.teal.withValues(alpha: 0.03),
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Colors.teal.withOpacity(0.2)),
+                        border: Border.all(color: Colors.teal.withValues(alpha: 0.2)),
                       ),
                       child: Stack(
                         children: [
@@ -173,7 +173,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                                 decoration: BoxDecoration(
-                                  color: Colors.teal.withOpacity(0.1),
+                                  color: Colors.teal.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Row(
@@ -201,7 +201,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
                             child: Icon(
                               Icons.account_balance_wallet,
                               size: 100,
-                              color: Colors.teal.withOpacity(0.05),
+                              color: Colors.teal.withValues(alpha: 0.05),
                             ),
                           ),
                         ],
@@ -219,7 +219,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
                           bottom: 24,
                           child: Container(
                             width: 2,
-                            color: Colors.white.withOpacity(0.08),
+                            color: Colors.white.withValues(alpha: 0.08),
                           ),
                         ),
 
@@ -304,13 +304,13 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
                 color: isActive ? Colors.teal[400] : const Color(0xFF0F172A),
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isActive ? Colors.teal[400]! : Colors.white.withOpacity(0.08),
+                  color: isActive ? Colors.teal[400]! : Colors.white.withValues(alpha: 0.08),
                   width: 2,
                 ),
                 boxShadow: isActive
                     ? [
                         BoxShadow(
-                          color: Colors.teal[400]!.withOpacity(0.2),
+                          color: Colors.teal[400]!.withValues(alpha: 0.2),
                           blurRadius: 8,
                           offset: const Offset(0, 3),
                         )
@@ -368,9 +368,9 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.02),
+        color: Colors.white.withValues(alpha: 0.02),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -385,10 +385,10 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
               labelText: 'Deposit Amount (₹)',
               labelStyle: const TextStyle(color: Colors.white38),
               filled: true,
-              fillColor: Colors.white.withOpacity(0.04),
+              fillColor: Colors.white.withValues(alpha: 0.04),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -424,9 +424,9 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   decoration: BoxDecoration(
-                    color: isSelected ? Colors.teal.withOpacity(0.1) : Colors.white.withOpacity(0.02),
+                    color: isSelected ? Colors.teal.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.02),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: isSelected ? Colors.teal : Colors.white.withOpacity(0.08)),
+                    border: Border.all(color: isSelected ? Colors.teal : Colors.white.withValues(alpha: 0.08)),
                   ),
                   child: Text(
                     '₹${amt.toStringAsFixed(0)}',
@@ -449,9 +449,9 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.02),
+        color: Colors.white.withValues(alpha: 0.02),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -461,7 +461,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.white.withOpacity(0.06)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
@@ -491,7 +491,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
                                             return Container(
                                               width: 280,
                                               height: 280,
-                                              color: Colors.white.withOpacity(0.04),
+                                              color: Colors.white.withValues(alpha: 0.04),
                                               child: CustomPaint(painter: QrPatternPainter()),
                                             );
                                           },
@@ -499,7 +499,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
                                       : Container(
                                           width: 280,
                                           height: 280,
-                                          color: Colors.white.withOpacity(0.04),
+                                          color: Colors.white.withValues(alpha: 0.04),
                                           child: CustomPaint(painter: QrPatternPainter()),
                                         ),
                                 ),
@@ -526,7 +526,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
                           width: 140,
                           height: 140,
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.04),
+                            color: Colors.white.withValues(alpha: 0.04),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: ClipRRect(
@@ -550,7 +550,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.5),
+                            color: Colors.black.withValues(alpha: 0.5),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Row(
@@ -583,9 +583,9 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.04),
+              color: Colors.white.withValues(alpha: 0.04),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.08)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
             ),
             child: Row(
               children: [
@@ -679,11 +679,11 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
               ),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.teal.withOpacity(0.05),
+              backgroundColor: Colors.teal.withValues(alpha: 0.05),
               foregroundColor: Colors.teal[300],
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              side: BorderSide(color: Colors.teal.withOpacity(0.2)),
+              side: BorderSide(color: Colors.teal.withValues(alpha: 0.2)),
               elevation: 0,
             ),
           ),
@@ -696,9 +696,9 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.02),
+        color: Colors.white.withValues(alpha: 0.02),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -714,11 +714,11 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
               labelText: 'UPI Transaction / UTR ID',
               labelStyle: const TextStyle(color: Colors.white38),
               filled: true,
-              fillColor: Colors.white.withOpacity(0.04),
+              fillColor: Colors.white.withValues(alpha: 0.04),
               counterText: '',
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),

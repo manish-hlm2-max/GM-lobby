@@ -45,8 +45,13 @@ class GameNotifier extends StateNotifier<GameState> {
   void initMatch(MatchModel match) {
     // CRITICAL: Disconnect any previous socket and clear stale state FIRST
     _socketService.disconnect();
-    state = GameState(currentMatch: match, messages: []);
     final userId = ref.read(authProvider).user?.id ?? '';
+    final isWhite = match.whitePlayerId == userId;
+    final chess = ChessDart.Chess.fromFEN(match.boardFen);
+    final isWhiteTurn = chess.turn == ChessDart.Color.WHITE;
+    final isMyTurn = (isWhite && isWhiteTurn) || (!isWhite && !isWhiteTurn);
+    
+    state = GameState(currentMatch: match, messages: [], isMyTurn: isMyTurn);
     
     // Connect socket and listen
     _socketService.connect(userId, onConnect: () {

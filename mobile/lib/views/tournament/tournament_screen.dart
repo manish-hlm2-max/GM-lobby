@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -416,7 +415,6 @@ class _TournamentCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isActive = tourn.status == 'ACTIVE';
     final isCompleted = tourn.status == 'COMPLETED';
-    final isUpcoming = tourn.status == 'UPCOMING';
 
     // Determine border & accent color
     Color accentColor = Colors.teal;

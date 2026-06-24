@@ -249,7 +249,7 @@ export const setupGameSocket = (io: Server) => {
 
 // Helper to compute remaining seconds for each player based on move history timestamps
 const calculateRemainingTimes = (match: IMatch) => {
-  const matchStart = new Date(match.createdAt).getTime();
+  const matchStart = new Date(match.startedAt || match.createdAt).getTime();
   let whiteElapsed = 0;
   let blackElapsed = 0;
 
@@ -832,7 +832,8 @@ export const startBotScheduler = (io: Server) => {
           }
 
           freshMatch.status = 'RUNNING';
-          await freshMatch.save(session ? { session } : {});
+          freshMatch.startedAt = new Date();
+          await freshMatch.save({ session: session || undefined });
 
           if (session) {
             await session.commitTransaction();

@@ -131,14 +131,14 @@ class _WithdrawalScreenState extends ConsumerState<WithdrawalScreen> {
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            Colors.teal.withOpacity(0.15),
-                            Colors.teal.withOpacity(0.03),
+                            Colors.teal.withValues(alpha: 0.15),
+                            Colors.teal.withValues(alpha: 0.03),
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Colors.teal.withOpacity(0.2)),
+                        border: Border.all(color: Colors.teal.withValues(alpha: 0.2)),
                       ),
                       child: Stack(
                         children: [
@@ -174,7 +174,7 @@ class _WithdrawalScreenState extends ConsumerState<WithdrawalScreen> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                                 decoration: BoxDecoration(
-                                  color: Colors.teal.withOpacity(0.1),
+                                  color: Colors.teal.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Row(
@@ -201,7 +201,7 @@ class _WithdrawalScreenState extends ConsumerState<WithdrawalScreen> {
                             child: Icon(
                               Icons.arrow_circle_up_outlined,
                               size: 100,
-                              color: Colors.teal.withOpacity(0.05),
+                              color: Colors.teal.withValues(alpha: 0.05),
                             ),
                           ),
                         ],
@@ -213,9 +213,9 @@ class _WithdrawalScreenState extends ConsumerState<WithdrawalScreen> {
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.02),
+                        color: Colors.white.withValues(alpha: 0.02),
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Colors.white.withOpacity(0.06)),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -328,9 +328,9 @@ class _WithdrawalScreenState extends ConsumerState<WithdrawalScreen> {
                         ? Container(
                             padding: const EdgeInsets.all(24),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.01),
+                              color: Colors.white.withValues(alpha: 0.01),
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: Colors.white.withOpacity(0.04)),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
                             ),
                             child: Center(
                               child: Text(
@@ -356,9 +356,9 @@ class _WithdrawalScreenState extends ConsumerState<WithdrawalScreen> {
                                 margin: const EdgeInsets.only(bottom: 12),
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.02),
+                                  color: Colors.white.withValues(alpha: 0.02),
                                   borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: Colors.white.withOpacity(0.06)),
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -377,9 +377,9 @@ class _WithdrawalScreenState extends ConsumerState<WithdrawalScreen> {
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                           decoration: BoxDecoration(
-                                            color: statusColor.withOpacity(0.1),
+                                            color: statusColor.withValues(alpha: 0.1),
                                             borderRadius: BorderRadius.circular(12),
-                                            border: Border.all(color: statusColor.withOpacity(0.3)),
+                                            border: Border.all(color: statusColor.withValues(alpha: 0.3)),
                                           ),
                                           child: Text(
                                             tx.status,
@@ -432,10 +432,10 @@ class _WithdrawalScreenState extends ConsumerState<WithdrawalScreen> {
       labelText: label,
       labelStyle: const TextStyle(color: Colors.white38),
       filled: true,
-      fillColor: Colors.white.withOpacity(0.04),
+      fillColor: Colors.white.withValues(alpha: 0.04),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/title_badge.dart';
 import 'friends_screen.dart';

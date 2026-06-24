@@ -30,6 +30,7 @@ export interface IMatch extends Document {
   winnerId?: Types.ObjectId;
   tournamentId?: Types.ObjectId;
   round?: number;
+  startedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -39,6 +40,7 @@ const MatchSchema = new Schema<IMatch>({
   blackPlayerId: { type: Schema.Types.ObjectId, ref: 'User' },
   tournamentId: { type: Schema.Types.ObjectId, ref: 'Tournament' },
   round: { type: Number },
+  startedAt: { type: Date },
   whiteUsername: { type: String },
   blackUsername: { type: String },
   whiteTitle: { type: String },

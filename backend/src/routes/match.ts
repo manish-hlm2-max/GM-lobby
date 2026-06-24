@@ -166,6 +166,7 @@ router.post('/join', authMiddleware, async (req: AuthRequest, res: Response): Pr
     }
 
     match.status = 'RUNNING';
+    match.startedAt = new Date();
     await match.save();
 
     res.status(200).json({
@@ -353,6 +354,7 @@ router.post('/matchmake', authMiddleware, async (req: AuthRequest, res: Response
         }
 
         existingMatch.status = 'RUNNING';
+        existingMatch.startedAt = new Date();
         await existingMatch.save();
 
         console.log('[MATCHMAKE] Joined existing match:', existingMatch._id);
@@ -502,6 +504,7 @@ router.post('/force-bot-join', authMiddleware, async (req: AuthRequest, res: Res
       }
 
       match.status = 'RUNNING';
+      match.startedAt = new Date();
       await match.save();
 
       if (match.tournamentId) {

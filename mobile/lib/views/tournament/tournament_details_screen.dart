@@ -10,8 +10,6 @@ import '../../providers/game_provider.dart';
 import '../../services/match_service.dart';
 import '../../services/tournament_service.dart';
 import '../game/game_screen.dart';
-import 'tournament_screen.dart';
-
 class TournamentDetailsScreen extends ConsumerStatefulWidget {
   final String tournamentId;
 
@@ -75,14 +73,7 @@ class _TournamentDetailsScreenState extends ConsumerState<TournamentDetailsScree
     final hasPlayedThisRound = myBracket != null;
     final hasCompletedMatch = myBracket != null && myBracket['winner'] != null;
 
-    // Also check if a match exists for a DRAW (no winner but bracket is marked as complete via the match status)
-    bool isMatchDraw = false;
-    if (myBracket != null && myBracket['winner'] == null && myBracket['matchId'] != null) {
-      // Check if the match ended in draw (winner is null but bracket exists = match was played)
-      // We derive this from the score: if scores changed and no winner, it was likely a draw auto-concluded
-      // For simplicity, check if match is in brackets but without a winner and there's a match ID
-      isMatchDraw = hasPlayedThisRound && !hasCompletedMatch;
-    }
+    // For simplicity, check if match is in brackets but without a winner and there's a match ID
 
     return Scaffold(
       backgroundColor: const Color(0xFF030712),
