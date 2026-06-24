@@ -10,7 +10,9 @@ import {
   Plus, 
   Check, 
   X, 
-  RefreshCw 
+  RefreshCw,
+  Megaphone,
+  Newspaper
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000/api';
@@ -19,7 +21,7 @@ export default function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('admin_token'));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [activeTab, setActiveTab] = useState<'users' | 'deposits' | 'withdrawals' | 'tournaments' | 'matches'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'deposits' | 'withdrawals' | 'tournaments' | 'matches' | 'announcements' | 'news'>('users');
   
   // Data state
   const [users, setUsers] = useState<any[]>([]);
@@ -27,6 +29,8 @@ export default function App() {
   const [deposits, setDeposits] = useState<any[]>([]);
   const [tournaments, setTournaments] = useState<any[]>([]);
   const [matches, setMatches] = useState<any[]>([]);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [news, setNews] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,6 +44,13 @@ export default function App() {
   const [tournEntry, setTournEntry] = useState(0);
   const [tournPrize, setTournPrize] = useState(0);
   const [tournTime, setTournTime] = useState('');
+
+  // Announcement and News form states
+  const [annTitle, setAnnTitle] = useState('');
+  const [annContent, setAnnContent] = useState('');
+  const [newsTitle, setNewsTitle] = useState('');
+  const [newsContent, setNewsContent] = useState('');
+  const [newsImageBase64, setNewsImageBase64] = useState<string | null>(null);
 
   // Deposit settings state
   const [upiId, setUpiId] = useState('');
@@ -82,6 +93,12 @@ export default function App() {
       } else if (activeTab === 'matches') {
         const res = await axios.get(`${API_BASE}/match/open`, { headers });
         setMatches(res.data.matches);
+      } else if (activeTab === 'announcements') {
+        const res = await axios.get(`${API_BASE}/announcement`, { headers });
+        setAnnouncements(res.data.announcements);
+      } else if (activeTab === 'news') {
+        const res = await axios.get(`${API_BASE}/news`, { headers });
+        setNews(res.data.news);
       }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to fetch data.');
@@ -239,6 +256,68 @@ export default function App() {
     }
   };
 
+  const handleCreateAnnouncement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      await axios.post(`${API_BASE}/announcement`, {
+        title: annTitle,
+        content: annContent
+      }, { headers });
+
+      setAnnTitle('');
+      setAnnContent('');
+      fetchDashboardData();
+      alert('Announcement posted successfully!');
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to post announcement.');
+    }
+  };
+
+  const handleDeleteAnnouncement = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this announcement?')) return;
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      await axios.delete(`${API_BASE}/announcement/${id}`, { headers });
+      fetchDashboardData();
+      alert('Announcement deleted successfully!');
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to delete announcement.');
+    }
+  };
+
+  const handleCreateNews = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      await axios.post(`${API_BASE}/news`, {
+        title: newsTitle,
+        content: newsContent,
+        imageBase64: newsImageBase64 || undefined
+      }, { headers });
+
+      setNewsTitle('');
+      setNewsContent('');
+      setNewsImageBase64(null);
+      fetchDashboardData();
+      alert('News item posted successfully!');
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to post news.');
+    }
+  };
+
+  const handleDeleteNews = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this news item?')) return;
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      await axios.delete(`${API_BASE}/news/${id}`, { headers });
+      fetchDashboardData();
+      alert('News item deleted successfully!');
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to delete news.');
+    }
+  };
+
   if (!token) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#030712' }}>
@@ -276,6 +355,12 @@ export default function App() {
           </div>
           <div className={`nav-link ${activeTab === 'matches' ? 'active' : ''}`} onClick={() => setActiveTab('matches')}>
             <Play className="nav-icon" /> Active Matches
+          </div>
+          <div className={`nav-link ${activeTab === 'announcements' ? 'active' : ''}`} onClick={() => setActiveTab('announcements')}>
+            <Megaphone className="nav-icon" /> Announcements
+          </div>
+          <div className={`nav-link ${activeTab === 'news' ? 'active' : ''}`} onClick={() => setActiveTab('news')}>
+            <Newspaper className="nav-icon" /> News Stream
           </div>
         </div>
         <button onClick={handleLogout} style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', padding: '12px', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' }}>
@@ -756,6 +841,134 @@ export default function App() {
                 </tbody>
               </table>
             )}
+          </div>
+        )}
+
+        {activeTab === 'announcements' && (
+          <div>
+            <div className="card">
+              <h3>Post a New Announcement</h3>
+              <form onSubmit={handleCreateAnnouncement} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '4px' }}>Announcement Title</label>
+                  <input type="text" placeholder="e.g. Server Maintenance" value={annTitle} onChange={(e) => setAnnTitle(e.target.value)} required style={{ width: '100%' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '4px' }}>Announcement Content</label>
+                  <textarea placeholder="Write the announcement details..." value={annContent} onChange={(e) => setAnnContent(e.target.value)} required rows={4} style={{ width: '100%', backgroundColor: '#0f172a', color: '#fff', border: '1px solid #334155', borderRadius: '8px', padding: '12px' }} />
+                </div>
+                <button className="btn-primary" type="submit" style={{ alignSelf: 'flex-start' }}>Post Announcement</button>
+              </form>
+            </div>
+
+            <div className="card">
+              <h3>Active Announcements</h3>
+              {loading ? <p>Loading Announcements...</p> : announcements.length === 0 ? <p style={{ color: '#64748b' }}>No announcements posted yet.</p> : (
+                <table>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '25%' }}>Title</th>
+                      <th style={{ width: '50%' }}>Content</th>
+                      <th style={{ width: '15%' }}>Posted Date</th>
+                      <th style={{ width: '10%' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {announcements.map(ann => (
+                      <tr key={ann._id}>
+                        <td style={{ fontWeight: 'bold' }}>{ann.title}</td>
+                        <td style={{ whiteSpace: 'pre-wrap', fontSize: '0.9rem' }}>{ann.content}</td>
+                        <td>{new Date(ann.createdAt).toLocaleString()}</td>
+                        <td>
+                          <button onClick={() => handleDeleteAnnouncement(ann._id)} style={{ backgroundColor: '#ef4444', border: 'none', padding: '6px 12px', borderRadius: '6px', color: '#fff', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }}>
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'news' && (
+          <div>
+            <div className="card">
+              <h3>Post a New News Story</h3>
+              <form onSubmit={handleCreateNews} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '4px' }}>News Title</label>
+                  <input type="text" placeholder="e.g. Tournament Rules Update" value={newsTitle} onChange={(e) => setNewsTitle(e.target.value)} required style={{ width: '100%' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '4px' }}>News Content</label>
+                  <textarea placeholder="Write the news article body..." value={newsContent} onChange={(e) => setNewsContent(e.target.value)} required rows={6} style={{ width: '100%', backgroundColor: '#0f172a', color: '#fff', border: '1px solid #334155', borderRadius: '8px', padding: '12px' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '4px' }}>Upload Banner/Thumbnail Image (Optional)</label>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setNewsImageBase64(reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }} 
+                  />
+                  {newsImageBase64 && (
+                    <div style={{ marginTop: '8px' }}>
+                      <img src={newsImageBase64} alt="News Preview" style={{ width: '200px', height: '100px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #334155' }} />
+                    </div>
+                  )}
+                </div>
+                <button className="btn-primary" type="submit" style={{ alignSelf: 'flex-start' }}>Post News</button>
+              </form>
+            </div>
+
+            <div className="card">
+              <h3>News Stream</h3>
+              {loading ? <p>Loading News...</p> : news.length === 0 ? <p style={{ color: '#64748b' }}>No news items posted yet.</p> : (
+                <table>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '15%' }}>Banner</th>
+                      <th style={{ width: '20%' }}>Title</th>
+                      <th style={{ width: '45%' }}>Content</th>
+                      <th style={{ width: '12%' }}>Posted Date</th>
+                      <th style={{ width: '8%' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {news.map(item => (
+                      <tr key={item._id}>
+                        <td>
+                          {item.imageUrl ? (
+                            <img src={`${API_BASE.replace('/api', '')}${item.imageUrl}`} alt="Banner" style={{ width: '80px', height: '45px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #334155' }} />
+                          ) : (
+                            <span style={{ color: '#64748b', fontSize: '0.8rem' }}>No image</span>
+                          )}
+                        </td>
+                        <td style={{ fontWeight: 'bold' }}>{item.title}</td>
+                        <td style={{ whiteSpace: 'pre-wrap', fontSize: '0.9rem' }}>{item.content}</td>
+                        <td>{new Date(item.createdAt).toLocaleString()}</td>
+                        <td>
+                          <button onClick={() => handleDeleteNews(item._id)} style={{ backgroundColor: '#ef4444', border: 'none', padding: '6px 12px', borderRadius: '6px', color: '#fff', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }}>
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </div>
         )}
       </div>

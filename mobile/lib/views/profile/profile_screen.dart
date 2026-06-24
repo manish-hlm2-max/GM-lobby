@@ -6,6 +6,8 @@ import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/title_badge.dart';
 import 'friends_screen.dart';
+import '../announcement/announcement_screen.dart';
+import '../news/news_screen.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -125,6 +127,60 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ),
               const SizedBox(height: 36),
+
+              // Announcements & News buttons Row
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const AnnouncementScreen()),
+                        );
+                      },
+                      icon: const Icon(Icons.campaign_rounded, color: Colors.white, size: 20),
+                      label: Text(
+                        'Announcements', 
+                        style: GoogleFonts.outfit(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white.withOpacity(0.04),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(color: Colors.white.withOpacity(0.08)),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const NewsScreen()),
+                        );
+                      },
+                      icon: const Icon(Icons.newspaper_rounded, color: Colors.white, size: 20),
+                      label: Text(
+                        'News Stream', 
+                        style: GoogleFonts.outfit(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white.withOpacity(0.04),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(color: Colors.white.withOpacity(0.08)),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
 
               // Friends Screen Navigation Button
               ElevatedButton.icon(

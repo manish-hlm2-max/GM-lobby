@@ -12,6 +12,8 @@ import authRoutes from './routes/auth';
 import walletRoutes from './routes/wallet';
 import matchRoutes from './routes/match';
 import tournamentRoutes from './routes/tournament';
+import announcementRoutes from './routes/announcement';
+import newsRoutes from './routes/news';
 import { setupGameSocket, startTournamentScheduler } from './sockets/gameSocket';
 import { User } from './models/User';
 
@@ -39,6 +41,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/match', matchRoutes);
 app.use('/api/tournament', tournamentRoutes);
+app.use('/api/announcement', announcementRoutes);
+app.use('/api/news', newsRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

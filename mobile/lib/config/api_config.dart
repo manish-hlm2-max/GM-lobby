@@ -29,6 +29,12 @@ class ApiConfig {
   static const String tournamentsList = '$baseUrl/api/tournament';
   static const String registerTournament = '$baseUrl/api/tournament/register';
 
+  // Announcement endpoints
+  static const String announcements = '$baseUrl/api/announcement';
+
+  // News endpoints
+  static const String news = '$baseUrl/api/news';
+
   // Friends endpoints
   static String searchUsers(String query) => '$baseUrl/api/auth/users/search?username=${Uri.encodeComponent(query)}';
   static const String addFriend = '$baseUrl/api/auth/friends/add';
