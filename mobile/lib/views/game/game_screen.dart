@@ -28,9 +28,16 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   final ScrollController _playerScrollController = ScrollController();
   int _lastMoveCount = -1;
 
+  // Guards for result dialog
+  bool _isResultDialogShowing = false;
+  String? _currentMatchId;
+
   @override
   void initState() {
     super.initState();
+    // Capture the match ID we were initialized with
+    final match = ref.read(gameProvider).currentMatch;
+    _currentMatchId = match?.id;
     _startLocalClock();
   }
 
@@ -629,6 +636,11 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     // Listen for turn transitions to trigger haptics and game over dialog
     ref.listen<GameState>(gameProvider, (previous, next) {
       if (next.currentMatch != null) {
+        // Only react to events for the match this screen was initialized with
+        if (_currentMatchId != null && next.currentMatch!.id != _currentMatchId) {
+          return;
+        }
+
         if (previous != null) {
           final wasMyTurn = previous.isMyTurn;
           final isMyTurnNow = next.isMyTurn;
@@ -636,9 +648,11 @@ class _GameScreenState extends ConsumerState<GameScreen> {
             HapticFeedback.vibrate();
           }
         }
-        if (next.currentMatch!.status == 'COMPLETED') {
+        if (next.currentMatch!.status == 'COMPLETED' && !_isResultDialogShowing) {
           final prevStatus = previous?.currentMatch?.status;
           if (prevStatus != 'COMPLETED') {
+            _isResultDialogShowing = true;
+            ref.read(gameProvider.notifier).markResultShown();
             _showResultDialog(context, next.currentMatch!, authState.user?.id);
           }
         }

@@ -930,6 +930,14 @@ class _TournamentMatchmakingDialogState extends ConsumerState<TournamentMatchmak
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     )..repeat(reverse: true);
+    // Listen for match state changes via socket (opponent joins while waiting)
+    ref.listenManual<GameState>(gameProvider, (previous, next) {
+      if (_hasNavigated) return;
+      final currentMatch = next.currentMatch;
+      if (currentMatch != null && currentMatch.status == 'RUNNING') {
+        _navigateToGame(currentMatch);
+      }
+    });
     _startSearch();
   }
 
@@ -940,76 +948,104 @@ class _TournamentMatchmakingDialogState extends ConsumerState<TournamentMatchmak
     super.dispose();
   }
 
+  /// Single atomic navigation method — ALL paths go through here
+  void _navigateToGame(MatchModel match) {
+    if (_hasNavigated) return;
+    _hasNavigated = true;
+    _timer?.cancel();
+
+    // Ensure gameProvider has the latest match state
+    ref.read(gameProvider.notifier).initMatch(match);
+
+    if (mounted) {
+      Navigator.pop(context); // pop dialog
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const GameScreen()),
+      ).then((_) {
+        ref.read(lobbyProvider.notifier).refreshLobby();
+      });
+    }
+  }
+
   void _startSearch() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_hasNavigated) {
+        timer.cancel();
+        return;
+      }
       if (_secondsLeft > 0) {
         setState(() {
           _secondsLeft--;
         });
       } else {
-        _timer?.cancel();
+        timer.cancel();
         _onTimeout();
       }
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (_hasNavigated) return;
       setState(() {
         _statusText = 'Connecting to tournament lobby...';
       });
 
       final res = await TournamentService().matchmakeTournament(widget.tournamentId);
-      if (!mounted) return;
+      if (!mounted || _hasNavigated) return;
 
       if (res['success'] == true) {
         final matchJson = res['match'];
         final match = MatchModel.fromJson(matchJson);
         if (match.status == 'RUNNING') {
-          _timer?.cancel();
-          _hasNavigated = true;
-          ref.read(gameProvider.notifier).initMatch(match);
-          Navigator.pop(context);
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const GameScreen()),
-          ).then((_) {
-            ref.read(lobbyProvider.notifier).refreshLobby();
-          });
+          // Instant match found! Navigate immediately.
+          _navigateToGame(match);
           return;
         }
 
+        // Match is WAITING — store it and connect the socket
         setState(() {
           _match = match;
           _statusText = 'Waiting for another player...';
         });
 
-        // Initialize game socket
+        // Initialize game socket so we receive match_state updates
         ref.read(gameProvider.notifier).initMatch(match);
       } else {
         _timer?.cancel();
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: Colors.redAccent,
-            content: Text(
-              res['error'] ?? 'Matchmaking failed.',
-              style: GoogleFonts.inter(color: Colors.white),
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: Colors.redAccent,
+              content: Text(
+                res['error'] ?? 'Matchmaking failed.',
+                style: GoogleFonts.inter(color: Colors.white),
+              ),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
+          );
+        }
       }
     });
   }
 
   Future<void> _onTimeout() async {
+    if (_hasNavigated) return;
     if (_match != null && _match!.status == 'WAITING') {
       setState(() {
         _statusText = 'Pairing you with a GM Bot...';
       });
       final botRes = await ref.read(lobbyProvider.notifier).forceBotJoin(_match!.id);
+      if (_hasNavigated) return;
       if (mounted) {
-        if (botRes['success'] != true) {
+        if (botRes['success'] == true) {
+          // Bot joined — navigate via response or socket listener
+          final match = botRes['match'] as MatchModel?;
+          if (match != null && match.status == 'RUNNING') {
+            _navigateToGame(match);
+          }
+        } else {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1028,6 +1064,7 @@ class _TournamentMatchmakingDialogState extends ConsumerState<TournamentMatchmak
   }
 
   Future<void> _cancelSearch() async {
+    _hasNavigated = true; // Prevent any further navigation attempts
     _timer?.cancel();
     if (_match != null) {
       await ref.read(lobbyProvider.notifier).cancelMatchmaking(_match!.id);
@@ -1040,24 +1077,6 @@ class _TournamentMatchmakingDialogState extends ConsumerState<TournamentMatchmak
 
   @override
   Widget build(BuildContext context) {
-    final gameState = ref.watch(gameProvider);
-    final currentMatch = gameState.currentMatch;
-
-    if (currentMatch != null && currentMatch.status == 'RUNNING' && !_hasNavigated) {
-      _hasNavigated = true;
-      _timer?.cancel();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pop(context);
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const GameScreen()),
-        ).then((_) {
-          // Refresh lobby when game ends and we return
-          ref.read(lobbyProvider.notifier).refreshLobby();
-        });
-      });
-    }
-
     final progress = _secondsLeft / 20;
 
     return PopScope(

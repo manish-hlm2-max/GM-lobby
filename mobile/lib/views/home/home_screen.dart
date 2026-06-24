@@ -493,6 +493,14 @@ class _MatchmakingDialogContentState extends ConsumerState<MatchmakingDialogCont
   @override
   void initState() {
     super.initState();
+    // Listen for match state changes via socket (opponent joins while waiting)
+    ref.listenManual<GameState>(gameProvider, (previous, next) {
+      if (_hasNavigated) return;
+      final currentMatch = next.currentMatch;
+      if (currentMatch != null && currentMatch.status == 'RUNNING') {
+        _navigateToGame(currentMatch);
+      }
+    });
     _startSearch();
   }
 
@@ -502,69 +510,99 @@ class _MatchmakingDialogContentState extends ConsumerState<MatchmakingDialogCont
     super.dispose();
   }
 
+  /// Single atomic navigation method — ALL paths go through here
+  void _navigateToGame(MatchModel match) {
+    if (_hasNavigated) return;
+    _hasNavigated = true;
+    _timer?.cancel();
+
+    // Ensure gameProvider has the latest match state
+    ref.read(gameProvider.notifier).initMatch(match);
+
+    if (mounted) {
+      Navigator.pop(context); // pop dialog
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const GameScreen()),
+      );
+    }
+  }
+
   void _startSearch() {
     // Start periodic countdown timer
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_hasNavigated) {
+        timer.cancel();
+        return;
+      }
       if (_secondsLeft > 0) {
         setState(() {
           _secondsLeft--;
         });
       } else {
-        _timer?.cancel();
+        timer.cancel();
         _onTimeout();
       }
     });
 
     // Call startMatchmaking API
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (_hasNavigated) return;
       setState(() {
         _statusText = 'Connecting to match server...';
       });
       final res = await ref.read(lobbyProvider.notifier).startMatchmaking(widget.entryFee, widget.timeControl);
-      if (!mounted) return;
+      if (!mounted || _hasNavigated) return;
 
       if (res['success'] == true) {
         final match = res['match'] as MatchModel;
         if (match.status == 'RUNNING') {
-          _timer?.cancel();
-          _hasNavigated = true;
-          ref.read(gameProvider.notifier).initMatch(match);
-          Navigator.pop(context);
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const GameScreen()),
-          );
+          // Instant match found! Navigate immediately.
+          _navigateToGame(match);
           return;
         }
 
+        // Match is WAITING — store it and connect the socket
         setState(() {
           _match = match;
+          _statusText = 'Searching for opponent...';
         });
 
-        // Initialize game socket immediately
+        // Initialize game socket so we receive match_state updates
         ref.read(gameProvider.notifier).initMatch(match);
       } else {
         // Matchmaking request failed
         _timer?.cancel();
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: Colors.redAccent,
-            content: Text(res['error'] ?? 'Matchmaking failed.', style: const TextStyle(color: Colors.white)),
-          ),
-        );
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: Colors.redAccent,
+              content: Text(res['error'] ?? 'Matchmaking failed.', style: const TextStyle(color: Colors.white)),
+            ),
+          );
+        }
       }
     });
   }
 
   Future<void> _onTimeout() async {
+    if (_hasNavigated) return;
     if (_match != null && _match!.status == 'WAITING') {
       setState(() {
         _statusText = 'Opponent found! Joining game...';
       });
       final botRes = await ref.read(lobbyProvider.notifier).forceBotJoin(_match!.id);
+      if (_hasNavigated) return;
       if (mounted) {
-        if (botRes['success'] != true) {
+        if (botRes['success'] == true) {
+          // Bot joined — the socket listener or this response will trigger navigation
+          final match = botRes['match'] as MatchModel?;
+          if (match != null && match.status == 'RUNNING') {
+            _navigateToGame(match);
+          }
+          // If match is not in the response, the socket match_state event will trigger _navigateToGame via the listener
+        } else {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -578,6 +616,7 @@ class _MatchmakingDialogContentState extends ConsumerState<MatchmakingDialogCont
   }
 
   Future<void> _cancelSearch() async {
+    _hasNavigated = true; // Prevent any further navigation attempts
     _timer?.cancel();
     if (_match != null) {
       // Run cancellation backend request
@@ -591,23 +630,6 @@ class _MatchmakingDialogContentState extends ConsumerState<MatchmakingDialogCont
 
   @override
   Widget build(BuildContext context) {
-    // Watch game state to see if match status changes to RUNNING (meaning a human player joined via socket)
-    final gameState = ref.watch(gameProvider);
-    final currentMatch = gameState.currentMatch;
-
-    if (currentMatch != null && currentMatch.status == 'RUNNING' && !_hasNavigated) {
-      // A human opponent has joined!
-      _hasNavigated = true;
-      _timer?.cancel();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pop(context);
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const GameScreen()),
-        );
-      });
-    }
-
     return PopScope(
       canPop: false,
       child: Dialog(
@@ -671,11 +693,11 @@ class _MatchmakingDialogContentState extends ConsumerState<MatchmakingDialogCont
               ),
               const SizedBox(height: 12),
               Text(
-                _secondsLeft > 30
+                _secondsLeft > 10
                     ? 'Please wait...'
                     : 'Almost there...',
                 style: GoogleFonts.inter(
-                  color: _secondsLeft > 30 ? Colors.teal[300] : Colors.amber[300],
+                  color: _secondsLeft > 10 ? Colors.teal[300] : Colors.amber[300],
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                 ),

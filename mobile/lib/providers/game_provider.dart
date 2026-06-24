@@ -9,12 +9,14 @@ class GameState {
   final List<Map<String, dynamic>> messages;
   final String? error;
   final bool isMyTurn;
+  final bool isResultShown;
 
   GameState({
     this.currentMatch,
     this.messages = const [],
     this.error,
     this.isMyTurn = false,
+    this.isResultShown = false,
   });
 
   GameState copyWith({
@@ -22,12 +24,14 @@ class GameState {
     List<Map<String, dynamic>>? messages,
     String? error,
     bool? isMyTurn,
+    bool? isResultShown,
   }) {
     return GameState(
       currentMatch: currentMatch ?? this.currentMatch,
       messages: messages ?? this.messages,
       error: error ?? this.error,
       isMyTurn: isMyTurn ?? this.isMyTurn,
+      isResultShown: isResultShown ?? this.isResultShown,
     );
   }
 }
@@ -39,6 +43,8 @@ class GameNotifier extends StateNotifier<GameState> {
   GameNotifier(this.ref) : super(GameState());
 
   void initMatch(MatchModel match) {
+    // CRITICAL: Disconnect any previous socket and clear stale state FIRST
+    _socketService.disconnect();
     state = GameState(currentMatch: match, messages: []);
     final userId = ref.read(authProvider).user?.id ?? '';
     
@@ -77,6 +83,10 @@ class GameNotifier extends StateNotifier<GameState> {
     _socketService.onMoveError((data) {
       state = state.copyWith(error: data['error']);
     });
+  }
+
+  void markResultShown() {
+    state = state.copyWith(isResultShown: true);
   }
 
   void makeMove(String from, String to, {String? promotion}) {
