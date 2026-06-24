@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:chess/chess.dart' as ChessDart;
+import 'package:audioplayers/audioplayers.dart';
 import '../../models/match_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/game_provider.dart';
@@ -28,6 +29,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   final ScrollController _playerScrollController = ScrollController();
   int _lastMoveCount = -1;
 
+  final AudioPlayer _audioPlayer = AudioPlayer();
+
   // Guards for result dialog
   bool _isResultDialogShowing = false;
   String? _currentMatchId;
@@ -46,6 +49,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     _localTimer?.cancel();
     _opponentScrollController.dispose();
     _playerScrollController.dispose();
+    _audioPlayer.dispose();
     // Disconnect socket and clean up state when leaving screen
     ref.read(gameProvider.notifier).leaveGame();
     super.dispose();
@@ -268,6 +272,154 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       default:
         return '';
     }
+  }
+
+  Future<void> _playCaptureSound() async {
+    try {
+      await _audioPlayer.play(AssetSource('sounds/capture.mp3'));
+    } catch (e) {
+      debugPrint('Error playing capture sound: $e');
+    }
+  }
+
+  List<CapturedPiece> _getCapturedPieces(ChessDart.Chess chess) {
+    final Map<ChessDart.Color, Map<ChessDart.PieceType, int>> boardCounts = {
+      ChessDart.Color.WHITE: {
+        ChessDart.PieceType.PAWN: 0,
+        ChessDart.PieceType.KNIGHT: 0,
+        ChessDart.PieceType.BISHOP: 0,
+        ChessDart.PieceType.ROOK: 0,
+        ChessDart.PieceType.QUEEN: 0,
+      },
+      ChessDart.Color.BLACK: {
+        ChessDart.PieceType.PAWN: 0,
+        ChessDart.PieceType.KNIGHT: 0,
+        ChessDart.PieceType.BISHOP: 0,
+        ChessDart.PieceType.ROOK: 0,
+        ChessDart.PieceType.QUEEN: 0,
+      },
+    };
+
+    for (int file = 0; file < 8; file++) {
+      for (int rank = 1; rank <= 8; rank++) {
+        final square = '${String.fromCharCode('a'.codeUnitAt(0) + file)}$rank';
+        final piece = chess.get(square);
+        if (piece != null && piece.type != ChessDart.PieceType.KING) {
+          final colorMap = boardCounts[piece.color];
+          if (colorMap != null) {
+            colorMap[piece.type] = (colorMap[piece.type] ?? 0) + 1;
+          }
+        }
+      }
+    }
+
+    final Map<ChessDart.PieceType, int> startingCounts = {
+      ChessDart.PieceType.PAWN: 8,
+      ChessDart.PieceType.KNIGHT: 2,
+      ChessDart.PieceType.BISHOP: 2,
+      ChessDart.PieceType.ROOK: 2,
+      ChessDart.PieceType.QUEEN: 1,
+    };
+
+    final List<CapturedPiece> captured = [];
+    
+    for (final color in [ChessDart.Color.WHITE, ChessDart.Color.BLACK]) {
+      final colorMap = boardCounts[color]!;
+      startingCounts.forEach((type, startingCount) {
+        final remaining = colorMap[type] ?? 0;
+        final capturedCount = startingCount - remaining;
+        for (int i = 0; i < capturedCount; i++) {
+          captured.add(CapturedPiece(type, color));
+        }
+      });
+    }
+
+    return captured;
+  }
+
+  int _pieceValue(ChessDart.PieceType type) {
+    switch (type) {
+      case ChessDart.PieceType.QUEEN:
+        return 9;
+      case ChessDart.PieceType.ROOK:
+        return 5;
+      case ChessDart.PieceType.BISHOP:
+        return 3;
+      case ChessDart.PieceType.KNIGHT:
+        return 3;
+      case ChessDart.PieceType.PAWN:
+        return 1;
+      default:
+        return 0;
+    }
+  }
+
+  String? _getKingSquare(ChessDart.Chess chess, ChessDart.Color color) {
+    for (int file = 0; file < 8; file++) {
+      for (int rank = 1; rank <= 8; rank++) {
+        final square = '${String.fromCharCode('a'.codeUnitAt(0) + file)}$rank';
+        final piece = chess.get(square);
+        if (piece != null && piece.type == ChessDart.PieceType.KING && piece.color == color) {
+          return square;
+        }
+      }
+    }
+    return null;
+  }
+
+  String _getPieceSolidUnicode(ChessDart.PieceType type) {
+    switch (type) {
+      case ChessDart.PieceType.PAWN:
+        return '♟';
+      case ChessDart.PieceType.KNIGHT:
+        return '♞';
+      case ChessDart.PieceType.BISHOP:
+        return '♝';
+      case ChessDart.PieceType.ROOK:
+        return '♜';
+      case ChessDart.PieceType.QUEEN:
+        return '♛';
+      default:
+        return '';
+    }
+  }
+
+  Widget _buildCapturedPiecesRow(List<CapturedPiece> captured, int advantage) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ...captured.map((p) {
+          final isWhite = p.color == ChessDart.Color.WHITE;
+          return Padding(
+            padding: const EdgeInsets.only(right: 2.0),
+            child: Text(
+              _getPieceSolidUnicode(p.type),
+              style: TextStyle(
+                fontSize: 14,
+                color: isWhite ? Colors.white.withOpacity(0.7) : Colors.black.withOpacity(0.55),
+                shadows: isWhite ? [] : [
+                  const Shadow(
+                    color: Colors.white30,
+                    blurRadius: 1,
+                  )
+                ],
+              ),
+            ),
+          );
+        }),
+        if (advantage > 0) ...[
+          const SizedBox(width: 4),
+          Text(
+            '+$advantage',
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF4ADE80),
+            ),
+          ),
+        ],
+      ],
+    );
   }
 
   void _showResultDialog(BuildContext context, MatchModel match, String? currentUserId) {
@@ -641,6 +793,21 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           return;
         }
 
+        // Play capture sound if the last move was a capture
+        if (previous != null && previous.currentMatch != null) {
+          final prevHistory = previous.currentMatch!.moveHistory;
+          final nextHistory = next.currentMatch!.moveHistory;
+          if (nextHistory.length > prevHistory.length) {
+            final lastMove = nextHistory.last;
+            if (lastMove is Map) {
+              final san = lastMove['san'] as String? ?? '';
+              if (san.contains('x')) {
+                _playCaptureSound();
+              }
+            }
+          }
+        }
+
         if (previous != null) {
           final wasMyTurn = previous.isMyTurn;
           final isMyTurnNow = next.isMyTurn;
@@ -671,6 +838,35 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
     final isWhitePlayer = match.whitePlayerId == authState.user?.id;
     final chess = ChessDart.Chess.fromFEN(match.boardFen);
+
+    // Calculate captured pieces
+    final captured = _getCapturedPieces(chess);
+    final capturedWhite = captured.where((p) => p.color == ChessDart.Color.WHITE).toList();
+    final capturedBlack = captured.where((p) => p.color == ChessDart.Color.BLACK).toList();
+
+    // Sort by value (descending)
+    capturedWhite.sort((a, b) => _pieceValue(b.type).compareTo(_pieceValue(a.type)));
+    capturedBlack.sort((a, b) => _pieceValue(b.type).compareTo(_pieceValue(a.type)));
+
+    final whiteValue = capturedWhite.fold<int>(0, (sum, p) => sum + _pieceValue(p.type));
+    final blackValue = capturedBlack.fold<int>(0, (sum, p) => sum + _pieceValue(p.type));
+
+    final List<CapturedPiece> opponentCapturedPieces;
+    final List<CapturedPiece> playerCapturedPieces;
+    final int opponentAdvantage;
+    final int playerAdvantage;
+
+    if (isWhitePlayer) {
+      opponentCapturedPieces = capturedWhite;
+      opponentAdvantage = (whiteValue - blackValue).clamp(0, 100);
+      playerCapturedPieces = capturedBlack;
+      playerAdvantage = (blackValue - whiteValue).clamp(0, 100);
+    } else {
+      opponentCapturedPieces = capturedBlack;
+      opponentAdvantage = (blackValue - whiteValue).clamp(0, 100);
+      playerCapturedPieces = capturedWhite;
+      playerAdvantage = (whiteValue - blackValue).clamp(0, 100);
+    }
 
     String? lastMoveFrom;
     String? lastMoveTo;
@@ -809,9 +1005,18 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                           style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
                         ),
                         buildFullTitleBadge(opponentTitle),
-                        Text(
-                          opponentColor,
-                          style: GoogleFonts.inter(color: Colors.white38, fontSize: 11),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Text(
+                              opponentColor,
+                              style: GoogleFonts.inter(color: Colors.white38, fontSize: 11),
+                            ),
+                            if (opponentCapturedPieces.isNotEmpty) ...[
+                              const SizedBox(width: 8),
+                              _buildCapturedPiecesRow(opponentCapturedPieces, opponentAdvantage),
+                            ],
+                          ],
                         ),
                       ],
                     ),
@@ -900,6 +1105,14 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                         tileColor = isLightSquare
                             ? const Color(0xFFE8C36A)
                             : const Color(0xFFBAAA33);
+                      }
+
+                      // Check highlight overrides other square colors (except selected square)
+                      final isKingInCheck = chess.in_check && square == _getKingSquare(chess, chess.turn);
+                      if (isKingInCheck && !isSelected) {
+                        tileColor = isLightSquare
+                            ? const Color(0xFFF09898)
+                            : const Color(0xFFC95C5C);
                       }
 
                       return GestureDetector(
@@ -1034,9 +1247,18 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                           style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
                         ),
                         buildFullTitleBadge(myTitle),
-                        Text(
-                          myColor,
-                          style: GoogleFonts.inter(color: Colors.white38, fontSize: 11),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Text(
+                              myColor,
+                              style: GoogleFonts.inter(color: Colors.white38, fontSize: 11),
+                            ),
+                            if (playerCapturedPieces.isNotEmpty) ...[
+                              const SizedBox(width: 8),
+                              _buildCapturedPiecesRow(playerCapturedPieces, playerAdvantage),
+                            ],
+                          ],
                         ),
                       ],
                     ),
@@ -1073,4 +1295,11 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       ),
     );
   }
+}
+
+class CapturedPiece {
+  final ChessDart.PieceType type;
+  final ChessDart.Color color;
+
+  CapturedPiece(this.type, this.color);
 }
