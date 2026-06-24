@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../models/match_model.dart';
 import '../../services/match_service.dart';
 import '../../providers/auth_provider.dart';
-import 'match_result_details_screen.dart';
+import 'match_replay_screen.dart';
 
 class ResultsScreen extends ConsumerStatefulWidget {
   const ResultsScreen({super.key});
@@ -156,7 +156,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => MatchResultDetailsScreen(match: match),
+                builder: (context) => MatchReplayScreen(match: match),
               ),
             );
           },

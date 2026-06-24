@@ -9,7 +9,6 @@ import '../../models/match_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/game_provider.dart';
 import '../../widgets/title_badge.dart';
-import '../results/match_result_details_screen.dart';
 
 class GameScreen extends ConsumerStatefulWidget {
   const GameScreen({super.key});
@@ -761,14 +760,11 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                         ),
                       ),
                       onPressed: () {
-                        Navigator.of(context).pushReplacement(
-                          MaterialPageRoute(
-                            builder: (context) => MatchResultDetailsScreen(match: match),
-                          ),
-                        );
+                        Navigator.pop(context); // Pop result dialog
+                        Navigator.pop(context); // Pop GameScreen
                       },
                       child: Text(
-                        'View Results',
+                        'Close',
                         style: GoogleFonts.outfit(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -824,12 +820,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           if (prevStatus != 'COMPLETED') {
             _isResultDialogShowing = true;
             ref.read(gameProvider.notifier).markResultShown();
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => MatchResultDetailsScreen(match: next.currentMatch!),
-              ),
-            );
+            _showResultDialog(context, next.currentMatch!, authState.user?.id);
           }
         }
       }
