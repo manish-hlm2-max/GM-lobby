@@ -172,4 +172,25 @@ class TournamentService {
       return {'success': false, 'error': e.toString()};
     }
   }
+
+  Future<Map<String, dynamic>> adminDeleteTournament(String tournamentId) async {
+    try {
+      final token = await _authService.getToken();
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/api/tournament/admin/delete'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'tournamentId': tournamentId,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+      return {'success': data['success'] == true, 'error': data['error']};
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
+  }
 }

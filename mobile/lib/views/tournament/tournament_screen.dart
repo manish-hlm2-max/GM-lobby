@@ -163,6 +163,7 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
                           }
                         },
                         onAdminEdit: () => _showAdminEditDialog(context, tourn),
+                        onAdminDelete: () => _confirmAdminDelete(context, tourn),
                       );
                     },
                     childCount: lobbyState.tournaments.length,
@@ -339,6 +340,60 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
       },
     );
   }
+
+  // ─────────────────────────────────────────────────────
+  //  Admin Delete Tournament Dialog
+  // ─────────────────────────────────────────────────────
+
+  void _confirmAdminDelete(BuildContext context, TournamentModel tourn) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          title: Text(
+            'Delete Tournament?',
+            style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            'Are you sure you want to delete "${tourn.name}"? This will refund any registered players and remove all match data. This cannot be undone.',
+            style: GoogleFonts.inter(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel', style: GoogleFonts.inter(color: Colors.white54)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                final res = await TournamentService().adminDeleteTournament(tourn.id);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        res['success'] == true ? 'Tournament deleted!' : (res['error'] ?? 'Failed'),
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                      ),
+                      backgroundColor: res['success'] == true ? Colors.teal[700] : Colors.redAccent,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  );
+                  ref.read(lobbyProvider.notifier).refreshLobby();
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: Text('Delete', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────
@@ -400,6 +455,7 @@ class _TournamentCard extends StatelessWidget {
   final VoidCallback onOpenDetails;
   final VoidCallback onAdminStart;
   final VoidCallback onAdminEdit;
+  final VoidCallback onAdminDelete;
 
   const _TournamentCard({
     required this.tourn,
@@ -409,6 +465,7 @@ class _TournamentCard extends StatelessWidget {
     required this.onOpenDetails,
     required this.onAdminStart,
     required this.onAdminEdit,
+    required this.onAdminDelete,
   });
 
   @override
@@ -509,26 +566,52 @@ class _TournamentCard extends StatelessWidget {
                       // Admin edit button
                       if (isAdmin) ...[
                         const SizedBox(height: 6),
-                        GestureDetector(
-                          onTap: onAdminEdit,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: Colors.amber.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.edit_rounded, color: Colors.amber[400], size: 12),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Edit',
-                                  style: GoogleFonts.inter(color: Colors.amber[400], fontSize: 10, fontWeight: FontWeight.bold),
+                        Row(
+                          children: [
+                            GestureDetector(
+                              onTap: onAdminEdit,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
                                 ),
-                              ],
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.edit_rounded, color: Colors.amber[400], size: 12),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Edit',
+                                      style: GoogleFonts.inter(color: Colors.amber[400], fontSize: 10, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
-                          ),
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: onAdminDelete,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: Colors.redAccent.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.delete_rounded, color: Colors.redAccent, size: 12),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Delete',
+                                      style: GoogleFonts.inter(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ],

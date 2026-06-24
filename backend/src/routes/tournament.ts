@@ -184,6 +184,53 @@ router.post('/admin/edit', authMiddleware, adminMiddleware, async (req: AuthRequ
   }
 });
 
+router.post('/admin/delete', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { tournamentId } = req.body;
+
+    if (!tournamentId) {
+      res.status(400).json({ success: false, error: 'Tournament ID is required.' });
+      return;
+    }
+
+    const tournament = await Tournament.findById(tournamentId);
+    if (!tournament) {
+      res.status(404).json({ success: false, error: 'Tournament not found.' });
+      return;
+    }
+
+    // Refund entry fees if UPCOMING
+    if (tournament.status === 'UPCOMING' && tournament.entryFee > 0) {
+      for (const participant of tournament.participants) {
+        const wallet = await Wallet.findOne({ userId: participant.userId });
+        if (wallet) {
+          wallet.balance += tournament.entryFee;
+          await wallet.save();
+          
+          const transaction = new Transaction({
+            userId: participant.userId,
+            amount: tournament.entryFee,
+            type: 'credit',
+            status: 'completed',
+            description: `Refund: Tournament Deleted (${tournament.name})`,
+            category: 'tournament_prize',
+            txId: `REF-${Date.now()}-${Math.floor(Math.random() * 1000)}`
+          });
+          await transaction.save();
+        }
+      }
+    }
+
+    await Tournament.findByIdAndDelete(tournamentId);
+    await Match.deleteMany({ tournamentId: tournament._id });
+
+    res.status(200).json({ success: true, message: 'Tournament deleted successfully.' });
+  } catch (error) {
+    console.error('Admin delete tournament error:', error);
+    res.status(500).json({ success: false, error: 'Server error deleting tournament.' });
+  }
+});
+
 // 4. Admin Start Tournament & Generate Round 1 Matches
 router.post('/admin/start', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
