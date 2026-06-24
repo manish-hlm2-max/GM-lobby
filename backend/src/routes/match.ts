@@ -283,7 +283,7 @@ router.post('/matchmake', authMiddleware, async (req: AuthRequest, res: Response
     const userObjId = new mongoose.Types.ObjectId(userId);
     let existingMatch = null;
     try {
-      existingMatch = await Match.findOne({
+      const waitingMatches = await Match.find({
         status: 'WAITING',
         entryFee: numericEntryFee,
         timeControl: numericTimeControl,
@@ -297,7 +297,18 @@ router.post('/matchmake', authMiddleware, async (req: AuthRequest, res: Response
           { whitePlayerId: { $ne: userObjId } },
           { blackPlayerId: { $ne: userObjId } }
         ]
-      });
+      }).sort({ createdAt: 1 });
+
+      for (const m of waitingMatches) {
+        const hostId = m.whitePlayerId || m.blackPlayerId;
+        if (hostId) {
+          const hostUser = await User.findById(hostId);
+          if (hostUser && !hostUser.isBot) {
+            existingMatch = m;
+            break;
+          }
+        }
+      }
       console.log('[MATCHMAKE] Existing match search result:', existingMatch ? existingMatch._id : 'none');
     } catch (queryErr: any) {
       console.error('[MATCHMAKE] Error searching for existing match:', queryErr.message);

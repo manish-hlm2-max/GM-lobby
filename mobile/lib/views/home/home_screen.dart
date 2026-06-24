@@ -488,6 +488,7 @@ class _MatchmakingDialogContentState extends ConsumerState<MatchmakingDialogCont
   int _secondsLeft = 20;
   MatchModel? _match;
   String _statusText = 'Finding your match...';
+  bool _hasNavigated = false;
 
   @override
   void initState() {
@@ -524,6 +525,18 @@ class _MatchmakingDialogContentState extends ConsumerState<MatchmakingDialogCont
 
       if (res['success'] == true) {
         final match = res['match'] as MatchModel;
+        if (match.status == 'RUNNING') {
+          _timer?.cancel();
+          _hasNavigated = true;
+          ref.read(gameProvider.notifier).initMatch(match);
+          Navigator.pop(context);
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const GameScreen()),
+          );
+          return;
+        }
+
         setState(() {
           _match = match;
         });
@@ -582,17 +595,16 @@ class _MatchmakingDialogContentState extends ConsumerState<MatchmakingDialogCont
     final gameState = ref.watch(gameProvider);
     final currentMatch = gameState.currentMatch;
 
-    if (currentMatch != null && currentMatch.status == 'RUNNING') {
+    if (currentMatch != null && currentMatch.status == 'RUNNING' && !_hasNavigated) {
       // A human opponent has joined!
+      _hasNavigated = true;
       _timer?.cancel();
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (Navigator.canPop(context)) {
-          Navigator.pop(context);
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const GameScreen()),
-          );
-        }
+        Navigator.pop(context);
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const GameScreen()),
+        );
       });
     }
 

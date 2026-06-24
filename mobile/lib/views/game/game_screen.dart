@@ -303,7 +303,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
     showGeneralDialog(
       context: context,
-      barrierDismissible: true,
+      barrierDismissible: false,
       barrierLabel: 'Result Dialog',
       barrierColor: Colors.black.withOpacity(0.75),
       transitionDuration: const Duration(milliseconds: 400),
@@ -601,7 +601,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                         ),
                       ),
                       onPressed: () {
-                        Navigator.pop(context);
+                        Navigator.pop(context); // Pop result dialog
+                        Navigator.pop(context); // Pop GameScreen
                       },
                       child: Text(
                         'Close',

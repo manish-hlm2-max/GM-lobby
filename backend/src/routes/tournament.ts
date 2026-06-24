@@ -301,18 +301,34 @@ router.post('/matchmake', authMiddleware, async (req: AuthRequest, res: Response
       return;
     }
 
-    // 1. Search for a WAITING match for this tournament and current round
-    let existingMatch = await Match.findOne({
-      status: 'WAITING',
-      tournamentId: tournament._id,
-      round: tournament.currentRound,
-      $or: [
-        { whitePlayerId: null },
-        { blackPlayerId: null }
-      ],
-      whitePlayerId: { $ne: new mongoose.Types.ObjectId(userId) },
-      blackPlayerId: { $ne: new mongoose.Types.ObjectId(userId) }
-    });
+    // 1. Search for a WAITING match for this tournament and current round hosted by a real player
+    let existingMatch = null;
+    try {
+      const waitingMatches = await Match.find({
+        status: 'WAITING',
+        tournamentId: tournament._id,
+        round: tournament.currentRound,
+        $or: [
+          { whitePlayerId: null },
+          { blackPlayerId: null }
+        ],
+        whitePlayerId: { $ne: new mongoose.Types.ObjectId(userId) },
+        blackPlayerId: { $ne: new mongoose.Types.ObjectId(userId) }
+      }).sort({ createdAt: 1 });
+
+      for (const m of waitingMatches) {
+        const hostId = m.whitePlayerId || m.blackPlayerId;
+        if (hostId) {
+          const hostUser = await User.findById(hostId);
+          if (hostUser && !hostUser.isBot) {
+            existingMatch = m;
+            break;
+          }
+        }
+      }
+    } catch (queryErr: any) {
+      console.error('[TOURNAMENT MATCHMAKE] Error searching for existing match:', queryErr.message);
+    }
 
     if (existingMatch) {
       // Join existing match

@@ -921,6 +921,7 @@ class _TournamentMatchmakingDialogState extends ConsumerState<TournamentMatchmak
   MatchModel? _match;
   String _statusText = 'Finding opponent...';
   late AnimationController _pulseController;
+  bool _hasNavigated = false;
 
   @override
   void initState() {
@@ -962,6 +963,20 @@ class _TournamentMatchmakingDialogState extends ConsumerState<TournamentMatchmak
       if (res['success'] == true) {
         final matchJson = res['match'];
         final match = MatchModel.fromJson(matchJson);
+        if (match.status == 'RUNNING') {
+          _timer?.cancel();
+          _hasNavigated = true;
+          ref.read(gameProvider.notifier).initMatch(match);
+          Navigator.pop(context);
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const GameScreen()),
+          ).then((_) {
+            ref.read(lobbyProvider.notifier).refreshLobby();
+          });
+          return;
+        }
+
         setState(() {
           _match = match;
           _statusText = 'Waiting for another player...';
@@ -1028,19 +1043,18 @@ class _TournamentMatchmakingDialogState extends ConsumerState<TournamentMatchmak
     final gameState = ref.watch(gameProvider);
     final currentMatch = gameState.currentMatch;
 
-    if (currentMatch != null && currentMatch.status == 'RUNNING') {
+    if (currentMatch != null && currentMatch.status == 'RUNNING' && !_hasNavigated) {
+      _hasNavigated = true;
       _timer?.cancel();
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (Navigator.canPop(context)) {
-          Navigator.pop(context);
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const GameScreen()),
-          ).then((_) {
-            // Refresh lobby when game ends and we return
-            ref.read(lobbyProvider.notifier).refreshLobby();
-          });
-        }
+        Navigator.pop(context);
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const GameScreen()),
+        ).then((_) {
+          // Refresh lobby when game ends and we return
+          ref.read(lobbyProvider.notifier).refreshLobby();
+        });
       });
     }
 

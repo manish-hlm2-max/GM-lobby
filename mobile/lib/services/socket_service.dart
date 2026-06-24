@@ -32,6 +32,7 @@ class SocketService {
   }
 
   void disconnect() {
+    _socket?.clearListeners();
     _socket?.disconnect();
     _socket = null;
   }
