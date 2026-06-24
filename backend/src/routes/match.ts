@@ -286,7 +286,7 @@ router.post('/matchmake', authMiddleware, async (req: AuthRequest, res: Response
     try {
       const waitingMatches = await Match.find({
         status: 'WAITING',
-        tournamentId: { $in: [null, undefined] },
+        tournamentId: null,
         entryFee: numericEntryFee,
         timeControl: numericTimeControl,
         $and: [

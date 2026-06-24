@@ -345,7 +345,10 @@ router.post('/matchmake', authMiddleware, async (req: AuthRequest, res: Response
     });
 
     // Trigger bot move if it plays as white
-    triggerBotMoveIfActive(newMatch._id.toString(), getIoInstance());
+    const io = getIoInstance();
+    if (io) {
+      triggerBotMoveIfActive(newMatch._id.toString(), io);
+    }
   } catch (error) {
     console.error('Tournament matchmaking error:', error);
     res.status(500).json({ success: false, error: 'Server error during tournament matchmaking.' });
