@@ -7,7 +7,7 @@ import { Transaction } from '../models/Transaction';
 import { User } from '../models/User';
 import { authMiddleware, adminMiddleware, AuthRequest } from '../middleware/authMiddleware';
 import { isTransactionSupported } from '../config/db';
-import { getIoInstance } from '../sockets/gameSocket';
+import { getIoInstance, triggerBotMoveIfActive } from '../sockets/gameSocket';
 
 const router = Router();
 
@@ -301,99 +301,51 @@ router.post('/matchmake', authMiddleware, async (req: AuthRequest, res: Response
       return;
     }
 
-    // 1. Search for a WAITING match for this tournament and current round hosted by a real player
-    let existingMatch = null;
-    try {
-      const waitingMatches = await Match.find({
-        status: 'WAITING',
-        tournamentId: tournament._id,
-        round: tournament.currentRound,
-        $or: [
-          { whitePlayerId: null },
-          { blackPlayerId: null }
-        ],
-        whitePlayerId: { $ne: new mongoose.Types.ObjectId(userId) },
-        blackPlayerId: { $ne: new mongoose.Types.ObjectId(userId) }
-      }).sort({ createdAt: 1 });
-
-      for (const m of waitingMatches) {
-        const hostId = m.whitePlayerId || m.blackPlayerId;
-        if (hostId) {
-          const hostUser = await User.findById(hostId);
-          if (hostUser && !hostUser.isBot) {
-            existingMatch = m;
-            break;
-          }
-        }
-      }
-    } catch (queryErr: any) {
-      console.error('[TOURNAMENT MATCHMAKE] Error searching for existing match:', queryErr.message);
-    }
-
-    if (existingMatch) {
-      // Join existing match
-      if (!existingMatch.whitePlayerId) {
-        existingMatch.whitePlayerId = new mongoose.Types.ObjectId(userId);
-        existingMatch.whiteUsername = user.username;
-        existingMatch.whiteTitle = user.title;
-        existingMatch.whiteElo = user.elo;
-      } else {
-        existingMatch.blackPlayerId = new mongoose.Types.ObjectId(userId);
-        existingMatch.blackUsername = user.username;
-        existingMatch.blackTitle = user.title;
-        existingMatch.blackElo = user.elo;
-      }
-
-      existingMatch.status = 'RUNNING';
-      await existingMatch.save();
-
-      // Record in brackets
-      tournament.brackets.push({
-        round: tournament.currentRound,
-        matchId: existingMatch._id as mongoose.Types.ObjectId,
-        playerA: existingMatch.whitePlayerId!,
-        playerB: existingMatch.blackPlayerId!,
-      });
-      await tournament.save();
-
-      // Broadcast update
-      const io = getIoInstance();
-      if (io) {
-        io.to(existingMatch._id.toString()).emit('match_state', existingMatch);
-      }
-
-      res.status(200).json({
-        success: true,
-        match: existingMatch
-      });
+    // Exclusive Bot Matchmaking for Tournaments
+    const bots = await User.find({ isBot: true }).sort({ elo: -1 }).limit(5);
+    if (bots.length === 0) {
+      res.status(500).json({ success: false, error: 'No high-level bots available for tournament.' });
       return;
     }
+    const bot = bots[Math.floor(Math.random() * bots.length)];
 
-    // 2. Create a new WAITING match
     const isWhite = Math.random() > 0.5;
     const newMatch = new Match({
-      whitePlayerId: isWhite ? new mongoose.Types.ObjectId(userId) : null,
-      blackPlayerId: isWhite ? null : new mongoose.Types.ObjectId(userId),
-      whiteUsername: isWhite ? user.username : null,
-      blackUsername: isWhite ? null : user.username,
-      whiteTitle: isWhite ? user.title : null,
-      blackTitle: isWhite ? null : user.title,
-      whiteElo: isWhite ? user.elo : null,
-      blackElo: isWhite ? null : user.elo,
+      whitePlayerId: isWhite ? new mongoose.Types.ObjectId(userId) : bot._id,
+      blackPlayerId: isWhite ? bot._id : new mongoose.Types.ObjectId(userId),
+      whiteUsername: isWhite ? user.username : bot.username,
+      blackUsername: isWhite ? bot.username : user.username,
+      whiteTitle: isWhite ? user.title : bot.title,
+      blackTitle: isWhite ? bot.title : user.title,
+      whiteElo: isWhite ? user.elo : bot.elo,
+      blackElo: isWhite ? bot.elo : user.elo,
       entryFee: 0,
       prizePool: 0,
       timeControl: 600, // 10 minutes
-      status: 'WAITING',
+      status: 'RUNNING',
+      startedAt: new Date(),
       tournamentId: tournament._id,
       round: tournament.currentRound
     });
 
     await newMatch.save();
 
-    res.status(201).json({
+    // Record in brackets
+    tournament.brackets.push({
+      round: tournament.currentRound,
+      matchId: newMatch._id as mongoose.Types.ObjectId,
+      playerA: newMatch.whitePlayerId!,
+      playerB: newMatch.blackPlayerId!,
+    });
+    await tournament.save();
+
+    res.status(200).json({
       success: true,
       match: newMatch
     });
+
+    // Trigger bot move if it plays as white
+    triggerBotMoveIfActive(newMatch._id.toString(), getIoInstance());
   } catch (error) {
     console.error('Tournament matchmaking error:', error);
     res.status(500).json({ success: false, error: 'Server error during tournament matchmaking.' });

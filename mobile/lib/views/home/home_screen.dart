@@ -485,7 +485,7 @@ class MatchmakingDialogContent extends ConsumerStatefulWidget {
 
 class _MatchmakingDialogContentState extends ConsumerState<MatchmakingDialogContent> {
   Timer? _timer;
-  int _secondsLeft = 20;
+  int _secondsLeft = 15;
   MatchModel? _match;
   String _statusText = 'Finding your match...';
   bool _hasNavigated = false;

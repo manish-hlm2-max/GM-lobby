@@ -907,8 +907,6 @@ class TournamentMatchmakingDialog extends ConsumerStatefulWidget {
 
 class _TournamentMatchmakingDialogState extends ConsumerState<TournamentMatchmakingDialog>
     with SingleTickerProviderStateMixin {
-  Timer? _timer;
-  int _secondsLeft = 20;
   MatchModel? _match;
   String _statusText = 'Finding opponent...';
   late AnimationController _pulseController;
@@ -934,7 +932,6 @@ class _TournamentMatchmakingDialogState extends ConsumerState<TournamentMatchmak
 
   @override
   void dispose() {
-    _timer?.cancel();
     _pulseController.dispose();
     super.dispose();
   }
@@ -943,7 +940,6 @@ class _TournamentMatchmakingDialogState extends ConsumerState<TournamentMatchmak
   void _navigateToGame(MatchModel match) {
     if (_hasNavigated) return;
     _hasNavigated = true;
-    _timer?.cancel();
 
     // Ensure gameProvider has the latest match state
     ref.read(gameProvider.notifier).initMatch(match);
@@ -960,23 +956,16 @@ class _TournamentMatchmakingDialogState extends ConsumerState<TournamentMatchmak
   }
 
   void _startSearch() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_hasNavigated) {
-        timer.cancel();
-        return;
-      }
-      if (_secondsLeft > 0) {
-        setState(() {
-          _secondsLeft--;
-        });
-      } else {
-        timer.cancel();
-        _onTimeout();
-      }
-    });
-
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (_hasNavigated) return;
+      setState(() {
+        _statusText = 'Finding opponent...';
+      });
+
+      // 10-second artificial delay to show the indeterminate pulsing UI
+      await Future.delayed(const Duration(seconds: 10));
+      if (_hasNavigated || !mounted) return;
+
       setState(() {
         _statusText = 'Connecting to tournament lobby...';
       });
@@ -1002,7 +991,6 @@ class _TournamentMatchmakingDialogState extends ConsumerState<TournamentMatchmak
         // Initialize game socket so we receive match_state updates
         ref.read(gameProvider.notifier).initMatch(match);
       } else {
-        _timer?.cancel();
         if (mounted) {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1021,42 +1009,8 @@ class _TournamentMatchmakingDialogState extends ConsumerState<TournamentMatchmak
     });
   }
 
-  Future<void> _onTimeout() async {
-    if (_hasNavigated) return;
-    if (_match != null && _match!.status == 'WAITING') {
-      setState(() {
-        _statusText = 'Pairing you with a GM Bot...';
-      });
-      final botRes = await ref.read(lobbyProvider.notifier).forceBotJoin(_match!.id);
-      if (_hasNavigated) return;
-      if (mounted) {
-        if (botRes['success'] == true) {
-          // Bot joined — navigate via response or socket listener
-          final match = botRes['match'] as MatchModel?;
-          if (match != null && match.status == 'RUNNING') {
-            _navigateToGame(match);
-          }
-        } else {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              backgroundColor: Colors.redAccent,
-              content: Text(
-                botRes['error'] ?? 'Failed to connect to bot.',
-                style: GoogleFonts.inter(color: Colors.white),
-              ),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          );
-        }
-      }
-    }
-  }
-
   Future<void> _cancelSearch() async {
     _hasNavigated = true; // Prevent any further navigation attempts
-    _timer?.cancel();
     if (_match != null) {
       await ref.read(lobbyProvider.notifier).cancelMatchmaking(_match!.id);
       ref.read(gameProvider.notifier).leaveGame();
@@ -1068,8 +1022,6 @@ class _TournamentMatchmakingDialogState extends ConsumerState<TournamentMatchmak
 
   @override
   Widget build(BuildContext context) {
-    final progress = _secondsLeft / 20;
-
     return PopScope(
       canPop: false,
       child: Dialog(
@@ -1103,29 +1055,15 @@ class _TournamentMatchmakingDialogState extends ConsumerState<TournamentMatchmak
                     width: 100,
                     height: 100,
                     child: CircularProgressIndicator(
-                      value: progress,
                       strokeWidth: 5,
                       backgroundColor: Colors.white.withOpacity(0.06),
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        _secondsLeft > 5 ? Colors.teal[400]! : Colors.orange[400]!,
-                      ),
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.teal[400]!),
                     ),
                   ),
-                  Column(
-                    children: [
-                      Text(
-                        _secondsLeft.toString().padLeft(2, '0'),
-                        style: GoogleFonts.outfit(
-                          color: Colors.white,
-                          fontSize: 34,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        'sec',
-                        style: GoogleFonts.inter(color: Colors.white30, fontSize: 11),
-                      ),
-                    ],
+                  const Icon(
+                    Icons.sports_esports,
+                    color: Colors.white,
+                    size: 40,
                   ),
                 ],
               ),
