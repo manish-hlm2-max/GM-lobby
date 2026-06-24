@@ -238,7 +238,18 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                               controller: _emailController,
                               style: const TextStyle(color: Colors.white),
                               decoration: _inputDecoration('Email Address', Icons.email_outlined),
-                              validator: (value) => value == null || value.isEmpty ? 'Please enter email' : null,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Please enter email';
+                                }
+                                if (_isSignUp) {
+                                  final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+                                  if (!emailRegex.hasMatch(value.trim())) {
+                                    return 'Please enter a valid email address';
+                                  }
+                                }
+                                return null;
+                              },
                             ),
                             const SizedBox(height: 16),
                             // Username field (only visible for sign up)
@@ -285,7 +296,16 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                                 style: const TextStyle(color: Colors.white),
                                 keyboardType: TextInputType.phone,
                                 decoration: _inputDecoration('Phone Number', Icons.phone_outlined),
-                                validator: (value) => value == null || value.trim().isEmpty ? 'Please enter phone number' : null,
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return 'Please enter phone number';
+                                  }
+                                  final phoneRegex = RegExp(r'^\+?[0-9]{10,15}$');
+                                  if (!phoneRegex.hasMatch(value.trim())) {
+                                    return 'Please enter a valid phone number (10-15 digits)';
+                                  }
+                                  return null;
+                                },
                               ),
                               const SizedBox(height: 16),
                             ],

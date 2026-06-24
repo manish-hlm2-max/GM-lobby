@@ -42,6 +42,20 @@ router.post('/register', async (req, res: Response): Promise<void> => {
       return;
     }
 
+    // Validate email format
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email.trim())) {
+      res.status(400).json({ success: false, error: 'Please enter a valid email address.' });
+      return;
+    }
+
+    // Validate phone number format (must be 10-15 digits, optional leading +)
+    const phoneRegex = /^\+?[0-9]{10,15}$/;
+    if (!phoneRegex.test(phoneNumber.trim())) {
+      res.status(400).json({ success: false, error: 'Please enter a valid phone number (10-15 digits).' });
+      return;
+    }
+
     // Check if email exists (case-insensitive)
     const existingEmail = await User.findOne({
       email: { $regex: new RegExp(`^${email.trim()}$`, 'i') }
