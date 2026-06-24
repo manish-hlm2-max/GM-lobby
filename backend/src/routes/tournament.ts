@@ -14,7 +14,7 @@ const router = Router();
 // 1. Get tournaments list
 router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tournaments = await Tournament.find({}).sort({ scheduledStartTime: 1 });
+    const tournaments = await Tournament.find({}).sort({ createdAt: -1 });
     res.status(200).json({ success: true, tournaments });
   } catch (error) {
     console.error('Fetch tournaments error:', error);
