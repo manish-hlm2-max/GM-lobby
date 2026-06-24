@@ -62,6 +62,9 @@ class _TournamentDetailsScreenState extends ConsumerState<TournamentDetailsScree
       );
     }
 
+    // Check if the user is registered in this tournament
+    final isRegistered = tourn.participants.any((p) => p['userId'] == currentUserId);
+
     // Find user's bracket matchup for the current round
     final myBracket = tourn.brackets.cast<dynamic>().firstWhere(
       (b) => b['round'] == tourn.currentRound && (b['playerA'] == currentUserId || b['playerB'] == currentUserId),
@@ -181,11 +184,12 @@ class _TournamentDetailsScreenState extends ConsumerState<TournamentDetailsScree
         },
         body: Column(
           children: [
-            // ── Match Action Card ──
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: _buildMatchActionCard(tourn, myBracket, hasCompletedMatch, currentUserId),
-            ),
+            // ── Match Action Card (only for registered users) ──
+            if (isRegistered)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: _buildMatchActionCard(tourn, myBracket, hasCompletedMatch, currentUserId),
+              ),
 
             // ── Leaderboard Header ──
             Padding(

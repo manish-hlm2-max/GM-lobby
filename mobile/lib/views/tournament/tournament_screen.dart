@@ -427,7 +427,7 @@ class _TournamentCard extends StatelessWidget {
     }
 
     return GestureDetector(
-      onTap: (isActive || isCompleted) && isRegistered ? onOpenDetails : null,
+      onTap: (isActive || isCompleted) ? onOpenDetails : null,
       child: Container(
         margin: const EdgeInsets.only(bottom: 14),
         decoration: BoxDecoration(
@@ -691,18 +691,23 @@ class _TournamentCard extends StatelessWidget {
           ),
         );
       }
-      return Container(
-        height: 44,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.03),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          'Tournament In Progress',
-          style: GoogleFonts.inter(color: Colors.white24, fontSize: 13, fontWeight: FontWeight.w500),
-        ),
-      );
+      return SizedBox(
+          width: double.infinity,
+          height: 44,
+          child: OutlinedButton.icon(
+            onPressed: onOpenDetails,
+            icon: Icon(Icons.leaderboard_rounded, size: 18, color: Colors.white38),
+            label: Text(
+              'View Points Table',
+              style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white54,
+              side: BorderSide(color: Colors.white.withOpacity(0.1)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        );
     }
 
     if (tourn.status == 'COMPLETED') {
@@ -725,18 +730,23 @@ class _TournamentCard extends StatelessWidget {
           ),
         );
       }
-      return Container(
-        height: 44,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.03),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          'Tournament Ended',
-          style: GoogleFonts.inter(color: Colors.white24, fontSize: 13, fontWeight: FontWeight.w500),
-        ),
-      );
+      return SizedBox(
+          width: double.infinity,
+          height: 44,
+          child: OutlinedButton.icon(
+            onPressed: onOpenDetails,
+            icon: const Icon(Icons.leaderboard_rounded, size: 18),
+            label: Text(
+              'View Results',
+              style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.blueAccent,
+              side: BorderSide(color: Colors.blueAccent.withOpacity(0.3)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        );
     }
 
     return const SizedBox.shrink();
