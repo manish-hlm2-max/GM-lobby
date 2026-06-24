@@ -421,7 +421,7 @@ router.post('/admin/override', authMiddleware, adminMiddleware, async (req: Auth
 // Admin fetches all users and transaction history (for admin tab views)
 router.get('/admin/users', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const users = await User.find({}).select('-passwordHash');
+    const users = await User.find({}).select('-passwordHash').sort({ createdAt: -1 });
     
     // Fetch wallet balances alongside
     const wallets = await Wallet.find({});
